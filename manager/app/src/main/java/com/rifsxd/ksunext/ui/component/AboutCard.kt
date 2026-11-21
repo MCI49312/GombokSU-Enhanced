@@ -52,6 +52,11 @@ fun AboutDialog(dismiss: () -> Unit) {
 
 @Composable
 private fun AboutCardContent() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+    val iconKey = prefs.getString("app_icon_key", "gomboksu") ?: "gomboksu"
+    val iconPreset = com.rifsxd.ksunext.ui.util.AppIconPreset.fromKey(iconKey)
+
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -62,7 +67,7 @@ private fun AboutCardContent() {
                 shape = CircleShape
             ) {
                 Image(
-                    painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+                    painter = painterResource(id = iconPreset.foregroundMipmap),
                     contentDescription = null,
                     modifier = Modifier.scale(1.5f)
                 )

@@ -212,6 +212,7 @@ class MainActivity : FragmentActivity() {
     var customAccentArgbState = mutableStateOf(0xFF3B82F6.toInt())
     var cardRadiusDpState = mutableStateOf(16)
     var fontStyleState = mutableStateOf("default")
+    var appIconKeyState = mutableStateOf("gomboksu")
     var navBarEnabled = mutableStateOf(true)
     var navBarAutoHideState = mutableStateOf(true)
     var navBarStyleState = mutableStateOf(0)
@@ -254,6 +255,7 @@ class MainActivity : FragmentActivity() {
             customAccentArgbState.value = prefsInit.getInt("custom_accent_argb", 0xFF3B82F6.toInt())
             cardRadiusDpState.value = prefsInit.getInt("card_radius_dp", 16)
             fontStyleState.value = prefsInit.getString("font_style", "default") ?: "default"
+            appIconKeyState.value = prefsInit.getString("app_icon_key", "gomboksu") ?: "gomboksu"
             navBarEnabled.value = prefsInit.getBoolean("enable_navbar", true)
             navBarAutoHideState.value = prefsInit.getBoolean("navbar_auto_hide", true)
             navBarStyleState.value = prefsInit.getInt("navbar_style", 0)
@@ -329,8 +331,11 @@ class MainActivity : FragmentActivity() {
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
+                                val splashIconRes = remember(appIconKeyState.value) {
+                                    AppIconPreset.fromKey(appIconKeyState.value).vectorDrawable
+                                }
                                 Icon(
-                                    painter = painterResource(R.drawable.ic_ksu_next),
+                                    painter = painterResource(splashIconRes),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier
@@ -741,6 +746,15 @@ class MainActivity : FragmentActivity() {
             prefs.edit().putString("font_style", styleKey).apply()
         } catch (_: Exception) {}
         fontStyleState.value = styleKey
+    }
+
+    fun setAppIconKey(iconKey: String) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putString("app_icon_key", iconKey).apply()
+        } catch (_: Exception) {}
+        appIconKeyState.value = iconKey
+        AppIconPreset.applyAppIcon(this, iconKey)
     }
 
     fun setNavBarEnabled(enabled: Boolean) {

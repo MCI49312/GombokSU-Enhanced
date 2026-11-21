@@ -107,6 +107,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val managerUAPIVersion = Natives.managerUAPIVersion
 
     val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() as? com.rifsxd.ksunext.ui.MainActivity }
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
     val autoExpandInfo = prefs.getBoolean("home_auto_expand_info", false)
@@ -115,6 +116,8 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val customTitle = prefs.getString("custom_header_title", "GombokSU Enhanced")
         ?.takeIf { it.isNotBlank() } ?: stringResource(R.string.app_name)
     val customSubtitle = prefs.getString("custom_header_subtitle", "") ?: ""
+    val appIconKey = activity?.appIconKeyState?.value ?: (prefs.getString("app_icon_key", "gomboksu") ?: "gomboksu")
+    val topBarLogoRes = remember(appIconKey) { AppIconPreset.fromKey(appIconKey).vectorDrawable }
     
     // Get scroll state for bottom bar tracking
     val bottomBarScrollState = LocalScrollState.current
@@ -141,6 +144,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 ksuVersion,
                 customTitle = customTitle,
                 customSubtitle = customSubtitle,
+                logoResId = topBarLogoRes,
                 onInstallClick = {
                     navigator.navigate(InstallScreenDestination)
                 },
@@ -675,6 +679,7 @@ private fun TopBar(
     ksuVersion: Int?,
     customTitle: String,
     customSubtitle: String,
+    logoResId: Int,
     onInstallClick: () -> Unit,
     onSettingsClick: () -> Unit,
     navBarEnabled: Boolean,
@@ -715,10 +720,11 @@ private fun TopBar(
                 }
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_ksu_next),
+                    painter = painterResource(logoResId),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
+                        .size(28.dp)
                         .padding(end = 8.dp)
                         .graphicsLayer {
                             rotationZ = rotation

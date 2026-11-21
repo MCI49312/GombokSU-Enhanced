@@ -3,6 +3,7 @@ package com.rifsxd.ksunext.ui.screen
 import android.content.Context
 import android.os.Build
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,11 +27,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -55,6 +58,7 @@ import com.rifsxd.ksunext.ui.component.SwitchItem
 import com.rifsxd.ksunext.ui.rememberScrollConnection
 import com.rifsxd.ksunext.ui.theme.AccentPreset
 import com.rifsxd.ksunext.ui.theme.AppFontPreset
+import com.rifsxd.ksunext.ui.util.AppIconPreset
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.LocaleHelper
 import com.rifsxd.ksunext.ui.util.findActivity
@@ -121,6 +125,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
     var customAccentArgb by rememberSaveable { mutableIntStateOf(prefs.getInt("custom_accent_argb", 0xFF3B82F6.toInt())) }
     var cardRadiusDp by rememberSaveable { mutableIntStateOf(prefs.getInt("card_radius_dp", 16)) }
     var fontStyleKey by rememberSaveable { mutableStateOf(prefs.getString("font_style", "default") ?: "default") }
+    var appIconKey by rememberSaveable { mutableStateOf(prefs.getString("app_icon_key", "gomboksu") ?: "gomboksu") }
 
     var enableNavBar by rememberSaveable { mutableStateOf(prefs.getBoolean("enable_navbar", true)) }
     var navBarAutoHide by rememberSaveable { mutableStateOf(prefs.getBoolean("navbar_auto_hide", true)) }
@@ -158,6 +163,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                         putInt("custom_accent_argb", 0xFF3B82F6.toInt())
                         putInt("card_radius_dp", 16)
                         putString("font_style", "default")
+                        putString("app_icon_key", "gomboksu")
                         putBoolean("enable_navbar", true)
                         putBoolean("navbar_auto_hide", true)
                         putInt("navbar_style", 0)
@@ -179,6 +185,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     customAccentArgb = 0xFF3B82F6.toInt()
                     cardRadiusDp = 16
                     fontStyleKey = "default"
+                    appIconKey = "gomboksu"
                     enableNavBar = true
                     navBarAutoHide = true
                     navBarStyle = 0
@@ -200,6 +207,8 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     activity?.setCustomAccentArgb(0xFF3B82F6.toInt())
                     activity?.setCardRadiusDp(16)
                     activity?.setFontStyle("default")
+                    activity?.setAppIconKey("gomboksu")
+                    AppIconPreset.applyAppIcon(context, "gomboksu")
                     activity?.setNavBarEnabled(true)
                     activity?.setNavBarAutoHide(true)
                     activity?.setNavBarStyle(0)
@@ -247,6 +256,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    val selectedIconPreset = AppIconPreset.fromKey(appIconKey)
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -255,9 +265,10 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.AutoAwesome,
+                            painter = painterResource(selectedIconPreset.vectorDrawable),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                     Column(modifier = Modifier.weight(1f)) {
@@ -597,6 +608,140 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                         showLanguageSheet = true
                     }
                 )
+            }
+
+            // SECTION 2.5: APP ICON & LOGO SELECTOR (4 PRESETS: NORMAL & MATERIAL)
+            SectionCard(
+                title = stringResource(R.string.section_app_icon),
+                icon = Icons.Filled.Apps
+            ) {
+                Text(
+                    text = stringResource(R.string.app_icon_summary),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                Spacer(Modifier.height(6.dp))
+
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    AppIconPreset.entries.forEach { preset ->
+                        val isSelected = appIconKey == preset.key
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerLow
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .border(
+                                    width = if (isSelected) 2.dp else 1.dp,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                                    shape = RoundedCornerShape(14.dp)
+                                )
+                                .clickable {
+                                    if (appIconKey != preset.key) {
+                                        appIconKey = preset.key
+                                        prefs.edit { putString("app_icon_key", preset.key) }
+                                        activity?.setAppIconKey(preset.key)
+                                        AppIconPreset.applyAppIcon(context, preset.key)
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.app_icon_changed_toast, preset.displayName),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Normal Icon Preview (White Circle + Foreground)
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                                        color = Color.White,
+                                        shape = CircleShape
+                                    ) {
+                                        Image(
+                                            painter = painterResource(preset.foregroundMipmap),
+                                            contentDescription = "${preset.displayName} Normal",
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .scale(1.38f)
+                                        )
+                                    }
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        text = "Normal",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                // Material Icon Preview (1-Color Themed Silhouette)
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .border(1.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                                        color = MaterialTheme.colorScheme.secondaryContainer,
+                                        shape = CircleShape
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(preset.vectorDrawable),
+                                                contentDescription = "${preset.displayName} Material",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        text = "Material",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                // Title & Description
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = preset.displayName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = preset.subtitle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = null
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             // SECTION 3: NAVIGATION & INTERACTION

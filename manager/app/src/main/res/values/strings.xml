@@ -421,4 +421,7 @@
     <string name="home_show_contributors_summary">Display the contributors list at the bottom of the Home screen.</string>
     <string name="custom_color_dialog_title">Custom RGB / Hex Accent Color</string>
     <string name="hex_color_code">Hex Color Code (RRGGBB)</string>
+    <string name="section_app_icon">App Icon &amp; Logo (Normal &amp; Material)</string>
+    <string name="app_icon_summary">Select your home screen launcher icon (supports both Normal and Android 13+ Material You themed icons) and in-app spinning logo.</string>
+    <string name="app_icon_changed_toast">App icon changed to %1$s</string>
 </resources>

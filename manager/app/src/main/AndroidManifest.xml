@@ -24,11 +24,75 @@
             android:taskAffinity="">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <meta-data android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- App Launcher Icon 1: GombokSU Enhanced (Default) -->
+        <activity-alias
+            android:name=".LauncherGombok"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:targetActivity=".ui.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <!-- App Launcher Icon 2: KernelSU Next -->
+        <activity-alias
+            android:name=".LauncherKsuNext"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_ksunext"
+            android:label="@string/app_name"
+            android:targetActivity=".ui.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <!-- App Launcher Icon 3: KernelSU (Original) -->
+        <activity-alias
+            android:name=".LauncherKsu"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_ksu"
+            android:label="@string/app_name"
+            android:targetActivity=".ui.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <!-- App Launcher Icon 4: Google Skull & Crossbones (☠️) -->
+        <activity-alias
+            android:name=".LauncherSkull"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_skull"
+            android:label="@string/app_name"
+            android:targetActivity=".ui.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
         
         <!-- Single entry point for opening zip files: the zip kind (module or
              AnyKernel3) is auto-detected in MainActivity -->

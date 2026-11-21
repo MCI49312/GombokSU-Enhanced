@@ -4,7 +4,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.annotation.DrawableRes
-import androidx.annotation.MipmapRes
 import com.rifsxd.ksunext.R
 
 enum class AppIconPreset(
@@ -12,8 +11,8 @@ enum class AppIconPreset(
     val displayName: String,
     val subtitle: String,
     val aliasSuffix: String,
-    @param:MipmapRes val foregroundMipmap: Int,
-    @param:MipmapRes val monochromeMipmap: Int,
+    @param:DrawableRes val foregroundMipmap: Int,
+    @param:DrawableRes val monochromeMipmap: Int,
     @param:DrawableRes val vectorDrawable: Int
 ) {
     GOMBOKSU(

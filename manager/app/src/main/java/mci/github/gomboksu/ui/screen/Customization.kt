@@ -281,10 +281,17 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        val activeAccentName = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            stringResource(R.string.dynamic_monet_wallpaper)
+                        val activeAccentName = if (dynamicColor) {
+                            val selectedPreset = AccentPreset.fromKey(accentPresetKey)
+                            if (selectedPreset == AccentPreset.DEVICE_ACCENT) {
+                                "Monet • Device Accent"
+                            } else {
+                                "Monet • ${selectedPreset.displayName}"
+                            }
                         } else {
-                            AccentPreset.fromKey(accentPresetKey).displayName
+                            val selectedPreset = AccentPreset.fromKey(accentPresetKey)
+                            if (selectedPreset == AccentPreset.DEVICE_ACCENT) AccentPreset.GOMBOK_BLUE.displayName
+                            else selectedPreset.displayName
                         }
                         Text(
                             text = stringResource(R.string.active_theme_format, activeAccentName),
@@ -342,16 +349,21 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     }
                 }
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    SwitchItem(
-                        icon = Icons.Filled.Wallpaper,
-                        title = stringResource(R.string.settings_dynamic_color),
-                        summary = stringResource(R.string.settings_dynamic_color_summary),
-                        checked = dynamicColor,
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                    ) { checked ->
-                        dynamicColor = checked
-                        activity?.setDynamicColor(checked)
+                SwitchItem(
+                    icon = Icons.Filled.Wallpaper,
+                    title = stringResource(R.string.settings_dynamic_color),
+                    summary = "Use Material You (Monet) tonal palettes with Device Accent or any custom accent",
+                    checked = dynamicColor,
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                ) { checked ->
+                    dynamicColor = checked
+                    activity?.setDynamicColor(checked)
+                    if (checked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        accentPresetKey = AccentPreset.DEVICE_ACCENT.key
+                        activity?.setAccentPreset(AccentPreset.DEVICE_ACCENT.key)
+                    } else if (!checked && accentPresetKey == AccentPreset.DEVICE_ACCENT.key) {
+                        accentPresetKey = AccentPreset.GOMBOK_BLUE.key
+                        activity?.setAccentPreset(AccentPreset.GOMBOK_BLUE.key)
                     }
                 }
 
@@ -371,6 +383,22 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
                 // Accent Color Swatches
+                val deviceWallpaperPrimary = remember(context, effectiveDark) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        if (effectiveDark) dynamicDarkColorScheme(context).primary
+                        else dynamicLightColorScheme(context).primary
+                    } else {
+                        AccentPreset.GOMBOK_BLUE.primary
+                    }
+                }
+                val visiblePresets = remember(dynamicColor) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && dynamicColor) {
+                        AccentPreset.entries
+                    } else {
+                        AccentPreset.entries.filter { it != AccentPreset.DEVICE_ACCENT }
+                    }
+                }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -378,27 +406,26 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.accent_color_presets),
+                            text = if (dynamicColor) "Monet Accent Color" else stringResource(R.string.accent_color_presets),
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
                         )
                         Text(
-                            text = if (dynamicColor) stringResource(R.string.accent_disabled_by_monet)
-                            else AccentPreset.fromKey(accentPresetKey).displayName,
+                            text = AccentPreset.fromKey(accentPresetKey).displayName,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
                         )
                     }
                     TextButton(onClick = {
-                        dynamicColor = false
-                        activity?.setDynamicColor(false)
                         showCustomColorDialog = true
                     }) {
                         Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.custom_hex_rgb))
+                        Text(stringResource(R.string.custom_hex_rgb), maxLines = 1)
                     }
                 }
 
@@ -406,9 +433,13 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(AccentPreset.entries, key = { it.key }) { preset ->
-                        val isSelected = !dynamicColor && accentPresetKey == preset.key
-                        val swatchColor = if (preset == AccentPreset.CUSTOM) Color(customAccentArgb) else preset.primary
+                    items(visiblePresets, key = { it.key }) { preset ->
+                        val isSelected = accentPresetKey == preset.key
+                        val swatchColor = when (preset) {
+                            AccentPreset.DEVICE_ACCENT -> deviceWallpaperPrimary
+                            AccentPreset.CUSTOM -> Color(customAccentArgb)
+                            else -> preset.primary
+                        }
                         val checkTint = if (swatchColor.luminance() > 0.5f) Color.Black else Color.White
 
                         Column(
@@ -417,10 +448,12 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                                 .width(68.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable {
-                                    dynamicColor = false
-                                    activity?.setDynamicColor(false)
                                     accentPresetKey = preset.key
                                     activity?.setAccentPreset(preset.key)
+                                    if (preset == AccentPreset.DEVICE_ACCENT && !dynamicColor) {
+                                        dynamicColor = true
+                                        activity?.setDynamicColor(true)
+                                    }
                                     if (preset == AccentPreset.CUSTOM) {
                                         showCustomColorDialog = true
                                     }
@@ -446,6 +479,13 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                                         tint = checkTint,
                                         modifier = Modifier.size(22.dp)
                                     )
+                                } else if (preset == AccentPreset.DEVICE_ACCENT) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Wallpaper,
+                                        contentDescription = preset.displayName,
+                                        tint = checkTint,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 } else if (preset == AccentPreset.CUSTOM) {
                                     Icon(
                                         imageVector = Icons.Filled.Colorize,
@@ -457,7 +497,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                             }
                             Spacer(Modifier.height(6.dp))
                             Text(
-                                text = preset.displayName.substringBefore(" "),
+                                text = if (preset == AccentPreset.DEVICE_ACCENT) "Device" else preset.displayName.substringBefore(" "),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 maxLines = 1
@@ -973,8 +1013,6 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
             onColorConfirmed = { newArgb ->
                 customAccentArgb = newArgb
                 accentPresetKey = AccentPreset.CUSTOM.key
-                dynamicColor = false
-                activity?.setDynamicColor(false)
                 activity?.setCustomAccentArgb(newArgb)
                 activity?.setAccentPreset(AccentPreset.CUSTOM.key)
                 showCustomColorDialog = false

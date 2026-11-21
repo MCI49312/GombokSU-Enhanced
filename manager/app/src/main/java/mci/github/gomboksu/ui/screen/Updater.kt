@@ -18,7 +18,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.compose.dropUnlessResumed
@@ -31,6 +39,7 @@ import kotlinx.coroutines.withContext
 import mci.github.gomboksu.BuildConfig
 import mci.github.gomboksu.ui.LocalNavBarEnabled
 import mci.github.gomboksu.ui.LocalScrollState
+import mci.github.gomboksu.ui.MainActivity
 import mci.github.gomboksu.ui.component.SwitchItem
 import mci.github.gomboksu.ui.rememberScrollConnection
 import mci.github.gomboksu.ui.util.*
@@ -42,6 +51,7 @@ import java.util.Locale
 @Composable
 fun UpdaterScreen(navigator: DestinationsNavigator) {
     val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() as? MainActivity }
     val scope = rememberCoroutineScope()
     val prefs = remember(context) { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
 
@@ -56,9 +66,19 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
         )
     } else null
 
-    val navBarEnabled = LocalNavBarEnabled.current
-    val isNavBarHidden = (bottomBarScrollState?.isScrollingDown?.value ?: false) || (navBarEnabled?.value == false)
-    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + if (isNavBarHidden) 0.dp else 112.dp
+    val navBarEnabled = LocalNavBarEnabled.current?.value ?: true
+    val navBarAutoHide = activity?.navBarAutoHideState?.value ?: prefs.getBoolean("navbar_auto_hide", true)
+    val navBarStyle = activity?.navBarStyleState?.value ?: prefs.getInt("navbar_style", 0)
+    val navBarShowLabels = activity?.navBarShowLabelsState?.value ?: prefs.getBoolean("navbar_show_labels", false)
+    val isNavBarVisible = navBarEnabled && (!(bottomBarScrollState?.isScrollingDown?.value ?: false) || !navBarAutoHide)
+
+    val systemNavBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val appNavBarClearance = when {
+        !isNavBarVisible -> 8.dp
+        navBarStyle == 1 -> 84.dp // Classic Docked NavigationBar
+        navBarStyle == 2 -> 80.dp // Compact Pill (60dp + 20dp vertical padding)
+        else -> if (navBarShowLabels) 104.dp else 100.dp // Floating Pill
+    }
 
     val isSpoofed = remember { isCurrentAppSpoofed() }
     val buildTypeLabel = if (isSpoofed) "Spoofed" else "Normal"
@@ -158,6 +178,8 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                         text = "App Updater",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
@@ -183,33 +205,249 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                 scrollBehavior = scrollBehavior
             )
         },
-        bottomBar = {
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .let { modifier ->
+                        if (bottomBarScrollConnection != null) {
+                            modifier
+                                .nestedScroll(bottomBarScrollConnection)
+                                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                        } else {
+                            modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                        }
+                    }
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .padding(bottom = systemNavBarBottom + appNavBarClearance + 72.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Status Banner Card
+                ElevatedCard(
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = when {
+                            updateAvailable -> MaterialTheme.colorScheme.primaryContainer
+                            checkError != null -> MaterialTheme.colorScheme.errorContainer
+                            else -> MaterialTheme.colorScheme.secondaryContainer
+                        }
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        if (isChecking) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                strokeWidth = 3.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = when {
+                                    updateAvailable -> Icons.Filled.SystemUpdate
+                                    checkError != null -> Icons.Filled.ErrorOutline
+                                    else -> Icons.Filled.CheckCircle
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(30.dp),
+                                tint = when {
+                                    updateAvailable -> MaterialTheme.colorScheme.onPrimaryContainer
+                                    checkError != null -> MaterialTheme.colorScheme.onErrorContainer
+                                    else -> MaterialTheme.colorScheme.onSecondaryContainer
+                                }
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = when {
+                                    isChecking -> "Checking for updates…"
+                                    updateAvailable -> "New Update Available: ${latestInfo.versionTag}"
+                                    checkError != null -> "Update Check Failed"
+                                    else -> "GombokSU Enhanced is Up to Date"
+                                },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = when {
+                                    isChecking -> "Fetching latest $buildTypeLabel release from GitHub…"
+                                    updateAvailable -> "Matched $buildTypeLabel build (${latestInfo.fileName}) is ready to install."
+                                    checkError != null -> checkError!!
+                                    else -> "Running latest $buildTypeLabel release ($currentVersionName)."
+                                },
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+
+                // Progress Card while downloading / installing
+                AnimatedVisibility(visible = isDownloading || statusMessage != null) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                text = statusMessage.orEmpty(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            if (isDownloading) {
+                                if (downloadProgress >= 0f) {
+                                    LinearProgressIndicator(
+                                        progress = { downloadProgress },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                } else {
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Version & Build Variant Details Card
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Text(
+                            text = "Version Details",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        UpdaterDetailRow(
+                            icon = Icons.Filled.Info,
+                            label = "Installed Manager",
+                            value = "$currentVersionName ($currentVersionCode)"
+                        )
+
+                        UpdaterDetailRow(
+                            icon = if (isSpoofed) Icons.Filled.VisibilityOff else Icons.Filled.Verified,
+                            label = "Detected Build Type",
+                            value = "$buildTypeLabel (${BuildConfig.APPLICATION_ID})"
+                        )
+
+                        UpdaterDetailRow(
+                            icon = Icons.Filled.NewReleases,
+                            label = "Latest GitHub Release",
+                            value = if (latestInfo.versionCode > 0) {
+                                "${latestInfo.versionTag} (${latestInfo.versionCode})"
+                            } else if (isChecking) {
+                                "Checking…"
+                            } else {
+                                "Unavailable"
+                            }
+                        )
+
+                        if (latestInfo.fileName.isNotBlank()) {
+                            UpdaterDetailRow(
+                                icon = Icons.Filled.Android,
+                                label = "Matched Release File",
+                                value = latestInfo.fileName
+                            )
+                        }
+                    }
+                }
+
+                // Auto-Update Settings Card
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        SwitchItem(
+                            icon = Icons.Filled.AutoMode,
+                            title = "Automatic App Update",
+                            summary = "Automatically download and install when a strictly newer $buildTypeLabel version is released",
+                            checked = autoUpdateEnabled,
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        ) { checked ->
+                            autoUpdateEnabled = checked
+                            prefs.edit { putBoolean("auto_update_app", checked) }
+                        }
+                    }
+                }
+
+                // Formatted Release Notes Card (no raw markdown symbols)
+                if (latestInfo.changelog.isNotBlank()) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                text = "Release Notes (${latestInfo.versionTag})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            FormattedReleaseNotes(markdown = latestInfo.changelog.trim())
+                        }
+                    }
+                }
+            }
+
+            // Sleek floating bottom action bar — adapts cleanly to Floating Pill, Classic Docked, Compact Pill, or Hidden Nav Bar
             Surface(
-                tonalElevation = 3.dp,
-                modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(18.dp),
+                tonalElevation = 4.dp,
+                shadowElevation = 6.dp,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = systemNavBarBottom + appNavBarClearance)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .padding(bottom = navBarPadding),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FilledTonalButton(
                         onClick = { startInstallFlow("Reinstalling") },
                         enabled = hasValidAsset && !isChecking && !isDownloading,
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(14.dp)
+                            .height(42.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(Modifier.width(8.dp))
-                        Text("Reinstall App", fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "Reinstall App",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
 
                     Button(
@@ -217,221 +455,158 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                         enabled = updateAvailable && hasValidAsset && !isChecking && !isDownloading,
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(14.dp)
+                            .height(42.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.SystemUpdate,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(Modifier.width(8.dp))
-                        Text("Update to New", fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-        },
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .let { modifier ->
-                    if (bottomBarScrollConnection != null) {
-                        modifier
-                            .nestedScroll(bottomBarScrollConnection)
-                            .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    } else {
-                        modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-                    }
-                }
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Status Banner Card
-            ElevatedCard(
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = when {
-                        updateAvailable -> MaterialTheme.colorScheme.primaryContainer
-                        checkError != null -> MaterialTheme.colorScheme.errorContainer
-                        else -> MaterialTheme.colorScheme.secondaryContainer
-                    }
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    if (isChecking) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(28.dp),
-                            strokeWidth = 3.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = when {
-                                updateAvailable -> Icons.Filled.SystemUpdate
-                                checkError != null -> Icons.Filled.ErrorOutline
-                                else -> Icons.Filled.CheckCircle
-                            },
-                            contentDescription = null,
-                            modifier = Modifier.size(30.dp),
-                            tint = when {
-                                updateAvailable -> MaterialTheme.colorScheme.onPrimaryContainer
-                                checkError != null -> MaterialTheme.colorScheme.onErrorContainer
-                                else -> MaterialTheme.colorScheme.onSecondaryContainer
-                            }
-                        )
-                    }
-
-                    Column(modifier = Modifier.weight(1f)) {
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            text = when {
-                                isChecking -> "Checking for updates…"
-                                updateAvailable -> "New Update Available: ${latestInfo.versionTag}"
-                                checkError != null -> "Update Check Failed"
-                                else -> "GombokSU Enhanced is Up to Date"
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = when {
-                                isChecking -> "Fetching latest $buildTypeLabel release from GitHub…"
-                                updateAvailable -> "Matched $buildTypeLabel build (${latestInfo.fileName}) is ready to install."
-                                checkError != null -> checkError!!
-                                else -> "Running latest $buildTypeLabel release ($currentVersionName)."
-                            },
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
-
-            // Progress Card while downloading / installing
-            AnimatedVisibility(visible = isDownloading || statusMessage != null) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text(
-                            text = statusMessage.orEmpty(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        if (isDownloading) {
-                            if (downloadProgress >= 0f) {
-                                LinearProgressIndicator(
-                                    progress = { downloadProgress },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            } else {
-                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Version & Build Variant Details Card
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Text(
-                        text = "Version Details",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    UpdaterDetailRow(
-                        icon = Icons.Filled.Info,
-                        label = "Installed Manager",
-                        value = "$currentVersionName ($currentVersionCode)"
-                    )
-
-                    UpdaterDetailRow(
-                        icon = if (isSpoofed) Icons.Filled.VisibilityOff else Icons.Filled.Verified,
-                        label = "Detected Build Type",
-                        value = "$buildTypeLabel (${BuildConfig.APPLICATION_ID})"
-                    )
-
-                    UpdaterDetailRow(
-                        icon = Icons.Filled.NewReleases,
-                        label = "Latest GitHub Release",
-                        value = if (latestInfo.versionCode > 0) {
-                            "${latestInfo.versionTag} (${latestInfo.versionCode})"
-                        } else if (isChecking) {
-                            "Checking…"
-                        } else {
-                            "Unavailable"
-                        }
-                    )
-
-                    if (latestInfo.fileName.isNotBlank()) {
-                        UpdaterDetailRow(
-                            icon = Icons.Filled.Android,
-                            label = "Matched Release File",
-                            value = latestInfo.fileName
-                        )
-                    }
-                }
-            }
-
-            // Auto-Update Settings Card
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    SwitchItem(
-                        icon = Icons.Filled.AutoMode,
-                        title = "Automatic App Update",
-                        summary = "Automatically download and install when a strictly newer $buildTypeLabel version is released",
-                        checked = autoUpdateEnabled,
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                    ) { checked ->
-                        autoUpdateEnabled = checked
-                        prefs.edit { putBoolean("auto_update_app", checked) }
-                    }
-                }
-            }
-
-            // Changelog Card
-            if (latestInfo.changelog.isNotBlank()) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Release Notes (${latestInfo.versionTag})",
-                            style = MaterialTheme.typography.titleMedium,
+                            text = "Update to New",
+                            style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = latestInfo.changelog.trim(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
             }
+        }
+    }
+}
 
-            Spacer(Modifier.height(8.dp))
+@Composable
+private fun FormattedReleaseNotes(markdown: String) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val mutedColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val codeBgColor = MaterialTheme.colorScheme.surfaceContainerHighest
+
+    val lines = remember(markdown) {
+        markdown.replace("\r\n", "\n").lines()
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        lines.forEach { rawLine ->
+            val trimmed = rawLine.trim()
+            when {
+                trimmed.isEmpty() || trimmed == "---" || trimmed == "***" -> {
+                    Spacer(Modifier.height(2.dp))
+                }
+                trimmed.startsWith("### ") -> {
+                    Text(
+                        text = parseInlineMarkdown(trimmed.removePrefix("### ").trim(), onSurfaceColor, primaryColor, codeBgColor),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = primaryColor,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                trimmed.startsWith("## ") -> {
+                    Text(
+                        text = parseInlineMarkdown(trimmed.removePrefix("## ").trim(), onSurfaceColor, primaryColor, codeBgColor),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = onSurfaceColor,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                trimmed.startsWith("# ") -> {
+                    Text(
+                        text = parseInlineMarkdown(trimmed.removePrefix("# ").trim(), onSurfaceColor, primaryColor, codeBgColor),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = onSurfaceColor,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                trimmed.startsWith("- ") || trimmed.startsWith("* ") -> {
+                    val itemContent = trimmed.drop(2).trim()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = primaryColor
+                        )
+                        Text(
+                            text = parseInlineMarkdown(itemContent, onSurfaceColor, primaryColor, codeBgColor),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = mutedColor,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                else -> {
+                    Text(
+                        text = parseInlineMarkdown(trimmed, onSurfaceColor, primaryColor, codeBgColor),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = mutedColor
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun parseInlineMarkdown(
+    text: String,
+    boldColor: Color,
+    linkColor: Color,
+    codeBgColor: Color
+): AnnotatedString {
+    val tokenRegex = Regex("""\*\*(.+?)\*\*|`([^`]+)`|\[([^\]]+)]\(([^)]+)\)|\*([^*]+)\*""")
+    return buildAnnotatedString {
+        var cursor = 0
+        for (match in tokenRegex.findAll(text)) {
+            if (match.range.first > cursor) {
+                append(text.substring(cursor, match.range.first))
+            }
+            when {
+                match.groups[1] != null -> {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = boldColor)) {
+                        append(match.groupValues[1])
+                    }
+                }
+                match.groups[2] != null -> {
+                    withStyle(
+                        SpanStyle(
+                            fontFamily = FontFamily.Monospace,
+                            background = codeBgColor,
+                            color = boldColor
+                        )
+                    ) {
+                        append(" ${match.groupValues[2]} ")
+                    }
+                }
+                match.groups[3] != null -> {
+                    withStyle(
+                        SpanStyle(
+                            color = linkColor,
+                            fontWeight = FontWeight.Medium,
+                            textDecoration = TextDecoration.Underline
+                        )
+                    ) {
+                        append(match.groupValues[3])
+                    }
+                }
+                match.groups[5] != null -> {
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                        append(match.groupValues[5])
+                    }
+                }
+            }
+            cursor = match.range.last + 1
+        }
+        if (cursor < text.length) {
+            append(text.substring(cursor))
         }
     }
 }

@@ -26,6 +26,7 @@ enum class AccentPreset(
     val secondary: Color,
     val tertiary: Color
 ) {
+    DEVICE_ACCENT("device_accent", "Device Accent", Color(0xFF3B82F6), Color(0xFF60A5FA), Color(0xFF38BDF8)),
     GOMBOK_BLUE("gombok_blue", "Gombok Blue", Color(0xFF3B82F6), Color(0xFF60A5FA), Color(0xFF38BDF8)),
     CATPPUCCIN("catppuccin", "Catppuccin Blue", Color(0xFF8AADF4), Color(0xFF7DC4E4), Color(0xFFF5BDE6)),
     EMERALD("emerald", "Emerald Green", Color(0xFF10B981), Color(0xFF34D399), Color(0xFFA7F3D0)),

@@ -39,7 +39,9 @@ import com.dergoogler.mmrl.ui.component.LabelItem
 import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.generated.destinations.AppProfileScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.HomeScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SulogScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import mci.github.gomboksu.ksuApp
@@ -53,6 +55,19 @@ import kotlinx.coroutines.launch
 @Destination<RootGraph>
 @Composable
 fun SuperUserScreen(navigator: DestinationsNavigator) {
+    val fullFeatured = remember { Natives.isFullFeatured() }
+    if (!fullFeatured) {
+        LaunchedEffect(Unit) {
+            navigator.navigate(HomeScreenDestination) {
+                popUpTo(NavGraphs.root.startRoute) {
+                    inclusive = true
+                }
+                launchSingleTop = true
+            }
+        }
+        return
+    }
+
     val viewModel = viewModel<SuperUserViewModel>()
     val scope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())

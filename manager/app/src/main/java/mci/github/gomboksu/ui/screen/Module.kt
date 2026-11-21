@@ -67,6 +67,8 @@ import com.dergoogler.mmrl.ui.component.LabelItem
 import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.NavGraphs
+import com.ramcosta.composedestinations.generated.destinations.HomeScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ModuleRepoScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
@@ -93,6 +95,18 @@ import kotlinx.coroutines.withContext
 @Destination<RootGraph>
 @Composable
 fun ModuleScreen(navigator: DestinationsNavigator) {
+    val fullFeatured = remember { Natives.isFullFeatured() }
+    if (!fullFeatured) {
+        LaunchedEffect(Unit) {
+            navigator.navigate(HomeScreenDestination) {
+                popUpTo(NavGraphs.root.startRoute) {
+                    inclusive = true
+                }
+                launchSingleTop = true
+            }
+        }
+        return
+    }
     val viewModel = viewModel<ModuleViewModel>()
     val context = LocalContext.current
     val snackBarHost = LocalSnackbarHost.current

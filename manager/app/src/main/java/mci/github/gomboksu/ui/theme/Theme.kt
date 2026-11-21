@@ -117,6 +117,113 @@ fun buildCustomColorScheme(
     }
 }
 
+fun buildMonetSeedColorScheme(
+    seedPrimary: Color,
+    seedSecondary: Color,
+    seedTertiary: Color,
+    darkTheme: Boolean,
+    amoledMode: Boolean
+): ColorScheme {
+    return if (darkTheme) {
+        // Material You (Monet) dark tonal palette generated from the selected seed accent
+        val primary = seedPrimary.blend(Color.White, 0.36f)
+        val onPrimary = seedPrimary.blend(Color.Black, 0.78f)
+        val primaryContainer = seedPrimary.blend(Color.Black, 0.50f)
+        val onPrimaryContainer = seedPrimary.blend(Color.White, 0.84f)
+
+        val secondary = seedSecondary.blend(Color.White, 0.34f).blend(Color(0xFF9CA3AF), 0.22f)
+        val onSecondary = seedSecondary.blend(Color.Black, 0.78f)
+        val secondaryContainer = seedSecondary.blend(Color.Black, 0.58f).blend(Color(0xFF1F2937), 0.25f)
+        val onSecondaryContainer = seedSecondary.blend(Color.White, 0.84f)
+
+        val tertiary = seedTertiary.blend(Color.White, 0.36f)
+        val onTertiary = seedTertiary.blend(Color.Black, 0.78f)
+        val tertiaryContainer = seedTertiary.blend(Color.Black, 0.54f)
+        val onTertiaryContainer = seedTertiary.blend(Color.White, 0.84f)
+
+        val bg = if (amoledMode) AMOLED_BLACK else Color(0xFF101114).blend(seedPrimary, 0.06f)
+        val surf = if (amoledMode) AMOLED_BLACK else Color(0xFF141519).blend(seedPrimary, 0.07f)
+        val surfLow = if (amoledMode) Color(0xFF0A0B0D).blend(seedPrimary, 0.06f) else Color(0xFF191B20).blend(seedPrimary, 0.09f)
+        val surfContainer = if (amoledMode) Color(0xFF101216).blend(seedPrimary, 0.10f) else Color(0xFF1E2027).blend(seedPrimary, 0.11f)
+        val surfHigh = if (amoledMode) Color(0xFF16181E).blend(seedPrimary, 0.12f) else Color(0xFF252831).blend(seedPrimary, 0.13f)
+        val surfHighest = if (amoledMode) Color(0xFF1D2028).blend(seedPrimary, 0.14f) else Color(0xFF2E323D).blend(seedPrimary, 0.15f)
+        val surfVar = surfHigh
+
+        darkColorScheme(
+            primary = primary,
+            onPrimary = onPrimary,
+            primaryContainer = primaryContainer,
+            onPrimaryContainer = onPrimaryContainer,
+            secondary = secondary,
+            onSecondary = onSecondary,
+            secondaryContainer = secondaryContainer,
+            onSecondaryContainer = onSecondaryContainer,
+            tertiary = tertiary,
+            onTertiary = onTertiary,
+            tertiaryContainer = tertiaryContainer,
+            onTertiaryContainer = onTertiaryContainer,
+            background = bg,
+            surface = surf,
+            surfaceVariant = surfVar,
+            surfaceContainer = surfContainer,
+            surfaceContainerLow = surfLow,
+            surfaceContainerLowest = bg,
+            surfaceContainerHigh = surfHigh,
+            surfaceContainerHighest = surfHighest,
+            outline = Color(0xFF8E9099).blend(seedPrimary, 0.16f),
+            outlineVariant = Color(0xFF44474F).blend(seedPrimary, 0.16f)
+        )
+    } else {
+        // Material You (Monet) light tonal palette generated from the selected seed accent
+        val primary = seedPrimary.blend(Color.Black, 0.22f)
+        val onPrimary = Color.White
+        val primaryContainer = seedPrimary.blend(Color.White, 0.80f)
+        val onPrimaryContainer = seedPrimary.blend(Color.Black, 0.72f)
+
+        val secondary = seedSecondary.blend(Color.Black, 0.28f).blend(Color(0xFF6B7280), 0.25f)
+        val onSecondary = Color.White
+        val secondaryContainer = seedSecondary.blend(Color.White, 0.84f)
+        val onSecondaryContainer = seedSecondary.blend(Color.Black, 0.72f)
+
+        val tertiary = seedTertiary.blend(Color.Black, 0.24f)
+        val onTertiary = Color.White
+        val tertiaryContainer = seedTertiary.blend(Color.White, 0.82f)
+        val onTertiaryContainer = seedTertiary.blend(Color.Black, 0.72f)
+
+        val bg = Color(0xFFFCFDFE).blend(seedPrimary, 0.04f)
+        val surf = Color(0xFFFCFDFE).blend(seedPrimary, 0.04f)
+        val surfLow = Color(0xFFF5F7FA).blend(seedPrimary, 0.07f)
+        val surfContainer = Color(0xFFEEF1F6).blend(seedPrimary, 0.10f)
+        val surfHigh = Color(0xFFE7EBF2).blend(seedPrimary, 0.12f)
+        val surfHighest = Color(0xFFE0E5EE).blend(seedPrimary, 0.14f)
+
+        lightColorScheme(
+            primary = primary,
+            onPrimary = onPrimary,
+            primaryContainer = primaryContainer,
+            onPrimaryContainer = onPrimaryContainer,
+            secondary = secondary,
+            onSecondary = onSecondary,
+            secondaryContainer = secondaryContainer,
+            onSecondaryContainer = onSecondaryContainer,
+            tertiary = tertiary,
+            onTertiary = onTertiary,
+            tertiaryContainer = tertiaryContainer,
+            onTertiaryContainer = onTertiaryContainer,
+            background = bg,
+            surface = surf,
+            surfaceVariant = surfHigh,
+            surfaceContainer = surfContainer,
+            surfaceContainerLow = surfLow,
+            surfaceContainerLowest = Color.White,
+            surfaceContainerHigh = surfHigh,
+            surfaceContainerHighest = surfHighest,
+            outline = Color(0xFF74777F).blend(seedPrimary, 0.16f),
+            outlineVariant = Color(0xFFC4C6D0).blend(seedPrimary, 0.16f)
+        )
+    }
+}
+
 fun resolveAppColorScheme(
     context: Context,
     darkTheme: Boolean,
@@ -125,8 +232,12 @@ fun resolveAppColorScheme(
     accentPresetKey: String = "gombok_blue",
     customAccentArgb: Int = 0xFF3B82F6.toInt()
 ): ColorScheme {
+    val preset = AccentPreset.fromKey(accentPresetKey)
+    val useDeviceWallpaperDynamic =
+        dynamicColor && preset == AccentPreset.DEVICE_ACCENT && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
     return when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        useDeviceWallpaperDynamic -> {
             val dynamicScheme = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             if (amoledMode && darkTheme) {
                 dynamicScheme.copy(
@@ -143,11 +254,24 @@ fun resolveAppColorScheme(
                 dynamicScheme
             }
         }
+        dynamicColor -> {
+            val effectivePreset = if (preset == AccentPreset.DEVICE_ACCENT) AccentPreset.GOMBOK_BLUE else preset
+            val primary = if (effectivePreset == AccentPreset.CUSTOM) Color(customAccentArgb) else effectivePreset.primary
+            val secondary = if (effectivePreset == AccentPreset.CUSTOM) primary.blend(Color.White, 0.25f) else effectivePreset.secondary
+            val tertiary = if (effectivePreset == AccentPreset.CUSTOM) primary.blend(Color(0xFF38BDF8), 0.35f) else effectivePreset.tertiary
+            buildMonetSeedColorScheme(
+                seedPrimary = primary,
+                seedSecondary = secondary,
+                seedTertiary = tertiary,
+                darkTheme = darkTheme,
+                amoledMode = amoledMode
+            )
+        }
         else -> {
-            val preset = AccentPreset.fromKey(accentPresetKey)
-            val primary = if (preset == AccentPreset.CUSTOM) Color(customAccentArgb) else preset.primary
-            val secondary = if (preset == AccentPreset.CUSTOM) primary.blend(Color.White, 0.25f) else preset.secondary
-            val tertiary = if (preset == AccentPreset.CUSTOM) primary.blend(Color(0xFF38BDF8), 0.35f) else preset.tertiary
+            val effectivePreset = if (preset == AccentPreset.DEVICE_ACCENT) AccentPreset.GOMBOK_BLUE else preset
+            val primary = if (effectivePreset == AccentPreset.CUSTOM) Color(customAccentArgb) else effectivePreset.primary
+            val secondary = if (effectivePreset == AccentPreset.CUSTOM) primary.blend(Color.White, 0.25f) else effectivePreset.secondary
+            val tertiary = if (effectivePreset == AccentPreset.CUSTOM) primary.blend(Color(0xFF38BDF8), 0.35f) else effectivePreset.tertiary
             buildCustomColorScheme(
                 seedPrimary = primary,
                 seedSecondary = secondary,

@@ -13,6 +13,7 @@
 ---
 
 > **Note:** GombokSU Enhanced is a personal/community customization fork built with AI assistance. **MCI49312 does NOT accept donations.** Please direct any financial support strictly to the upstream [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next) and [KernelSU](https://github.com/tiann/KernelSU) authors who built the underlying kernel root solution.
+> **Disclaimer:** The developer is not responsible if you do something wrong and brick your device. Use GombokSU Enhanced at your own risk.
 
 ## ✨ What's New in GombokSU Enhanced
 

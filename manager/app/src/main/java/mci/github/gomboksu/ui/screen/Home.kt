@@ -20,6 +20,7 @@ import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -189,52 +190,56 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 Natives.isLkmMode
             }
 
-            StatusCard(
-                kernelVersion,
-                ksuVersion,
-                kernelUAPIVersion,
-                lkmMode,
-                ksuVersionTagParam = ksuVersionTag
-            ) {
-                navigator.navigate(InstallScreenDestination)
+            GombokAnimatedEntrance(index = 0) {
+                StatusCard(
+                    kernelVersion,
+                    ksuVersion,
+                    kernelUAPIVersion,
+                    lkmMode,
+                    ksuVersionTagParam = ksuVersionTag
+                ) {
+                    navigator.navigate(InstallScreenDestination)
+                }
             }
 
             val homeDestination = BottomBarDestination.entries.firstOrNull()
             val startRoute = homeDestination?.direction?.route
 
             if (fullFeatured) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        SuperuserCard(
-                            onClick = {
-                                navigator.navigate(SuperUserScreenDestination) {
-                                    popUpTo(NavGraphs.root.startRoute) {
-                                        saveState = true
+                GombokAnimatedEntrance(index = 1) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            SuperuserCard(
+                                onClick = {
+                                    navigator.navigate(SuperUserScreenDestination) {
+                                        popUpTo(NavGraphs.root.startRoute) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
-                            }
-                        )
-                    }
+                            )
+                        }
 
-                    Box(modifier = Modifier.weight(1f)) {
-                        ModuleCard(
-                            onClick = {
-                                navigator.navigate(ModuleScreenDestination) {
-                                    popUpTo(NavGraphs.root.startRoute) {
-                                        saveState = true
+                        Box(modifier = Modifier.weight(1f)) {
+                            ModuleCard(
+                                onClick = {
+                                    navigator.navigate(ModuleScreenDestination) {
+                                        popUpTo(NavGraphs.root.startRoute) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -300,22 +305,30 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             }
 
             if (showAboutDevice) {
-                InfoCard(autoExpand = autoExpandInfo)
+                GombokAnimatedEntrance(index = 2) {
+                    InfoCard(autoExpand = autoExpandInfo)
+                }
             }
             if (showIssueReport) {
-                IssueReportCard()
-            }
-            UpdaterLinkCard(
-                onClick = {
-                    navigator.navigate(UpdaterScreenDestination)
+                GombokAnimatedEntrance(index = 3) {
+                    IssueReportCard()
                 }
-            )
-            if (showContributors) {
-                ContributorsCard(
+            }
+            GombokAnimatedEntrance(index = 4) {
+                UpdaterLinkCard(
                     onClick = {
-                        navigator.navigate(ContributorsScreenDestination)
+                        navigator.navigate(UpdaterScreenDestination)
                     }
                 )
+            }
+            if (showContributors) {
+                GombokAnimatedEntrance(index = 5) {
+                    ContributorsCard(
+                        onClick = {
+                            navigator.navigate(ContributorsScreenDestination)
+                        }
+                    )
+                }
             }
             Spacer(Modifier)
         }
@@ -331,6 +344,7 @@ private fun SuperuserCard(onClick: (() -> Unit)? = null) {
         ),
         modifier = Modifier
             .height(IntrinsicSize.Min)
+            .gombokPressBounce()
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
     ) {
         Box(
@@ -391,6 +405,7 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
         ),
         modifier = Modifier
             .height(IntrinsicSize.Min)
+            .gombokPressBounce()
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
     ) {
         Box(
@@ -581,6 +596,7 @@ private fun UpdaterLinkCard(onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .gombokPressBounce()
             .clickable { onClick() }
     ) {
         Row(
@@ -779,7 +795,9 @@ private fun StatusCard(
 ) {
     val context = LocalContext.current
 
+    val anim = LocalAnimationConfig.current
     ElevatedCard(
+        modifier = Modifier.gombokPressBounce(),
         colors = CardDefaults.elevatedCardColors(containerColor = run {
             if (ksuVersionParam != null) MaterialTheme.colorScheme.primary
             else if (kernelVersionParam.isGKI()) MaterialTheme.colorScheme.secondaryContainer
@@ -802,10 +820,49 @@ private fun StatusCard(
                         "$mode (" + kernelVersionParam.getKernelType() + ")"
                     } else kernelVersionParam.getKernelType()
 
-                    Icon(
-                        imageVector = Icons.Filled.Mood,
-                        contentDescription = null
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        if (anim.enabled && anim.statusPulseGlow) {
+                            val infiniteTransition = rememberInfiniteTransition(label = "statusPulse")
+                            val pulseScale by infiniteTransition.animateFloat(
+                                initialValue = 0.9f,
+                                targetValue = 1.65f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(
+                                        durationMillis = anim.scaledDuration(1800),
+                                        easing = FastOutSlowInEasing
+                                    ),
+                                    repeatMode = RepeatMode.Restart
+                                ),
+                                label = "pulseScale"
+                            )
+                            val pulseAlpha by infiniteTransition.animateFloat(
+                                initialValue = 0.45f,
+                                targetValue = 0f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(
+                                        durationMillis = anim.scaledDuration(1800),
+                                        easing = FastOutSlowInEasing
+                                    ),
+                                    repeatMode = RepeatMode.Restart
+                                ),
+                                label = "pulseAlpha"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .graphicsLayer {
+                                        scaleX = pulseScale
+                                        scaleY = pulseScale
+                                        alpha = pulseAlpha
+                                    }
+                                    .border(2.dp, MaterialTheme.colorScheme.onPrimary, CircleShape)
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Filled.Mood,
+                            contentDescription = null
+                        )
+                    }
                     Column(
                         modifier = Modifier.padding(start = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -1328,6 +1385,7 @@ fun ContributorsCard(onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .gombokPressBounce()
             .clickable { onClick() }
     ) {
         Row(

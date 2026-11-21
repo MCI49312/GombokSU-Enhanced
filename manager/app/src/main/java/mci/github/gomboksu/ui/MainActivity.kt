@@ -219,6 +219,7 @@ class MainActivity : FragmentActivity() {
     var navBarShowLabelsState = mutableStateOf(false)
     var swipeNavigationState = mutableStateOf(true)
     var hapticFeedbackState = mutableStateOf(true)
+    var animationConfigState = mutableStateOf(AnimationConfig())
     private val handler = Handler(Looper.getMainLooper())
 
     val moduleViewModel: ModuleViewModel by viewModels()
@@ -262,6 +263,7 @@ class MainActivity : FragmentActivity() {
             navBarShowLabelsState.value = prefsInit.getBoolean("navbar_show_labels", false)
             swipeNavigationState.value = prefsInit.getBoolean("enable_swipe_navigation", true)
             hapticFeedbackState.value = prefsInit.getBoolean("enable_haptic_feedback", true)
+            animationConfigState.value = AnimationConfig.fromPrefs(prefsInit)
         } catch (_: Exception) {}
 
         val isManager = Natives.isManager
@@ -296,54 +298,27 @@ class MainActivity : FragmentActivity() {
                 fontStyleKey = fontStyleState.value
             ) {
                 var showSplash by remember { mutableStateOf(enableStartupAnimation) }
-                var splashRotationTarget by remember { mutableStateOf(0f) }
-                val splashRotation by animateFloatAsState(
-                    targetValue = splashRotationTarget,
-                    animationSpec = tween(
-                        durationMillis = 1400,
-                        easing = FastOutSlowInEasing
-                    ),
-                    finishedListener = {
-                        showSplash = false
-                    },
-                    label = "splashRotation"
-                )
-
-                LaunchedEffect(appLockState.value) {
-                    if (!appLockState.value && showSplash) {
-                        splashRotationTarget += 360f * 6
-                    }
-                }
+                val animConfig = animationConfigState.value
 
                 AnimatedContent(
                     targetState = showSplash,
                     transitionSpec = {
-                        fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(180))
+                        fadeIn(animationSpec = tween(animConfig.scaledDuration(220))) togetherWith
+                            fadeOut(animationSpec = tween(animConfig.scaledDuration(220)))
                     },
                     label = "appSplashTransition"
                 ) { isSplashVisible ->
-                    if (isSplashVisible) {
-                        Box(
-                            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                val splashIconRes = remember(appIconKeyState.value) {
-                                    AppIconPreset.fromKey(appIconKeyState.value).vectorDrawable
-                                }
-                                Icon(
-                                    painter = painterResource(splashIconRes),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .size(120.dp)
-                                        .graphicsLayer { rotationZ = splashRotation }
-                                )
-                            }
+                    if (isSplashVisible && !appLockState.value) {
+                        val splashIconRes = remember(appIconKeyState.value) {
+                            AppIconPreset.fromKey(appIconKeyState.value).vectorDrawable
                         }
+                        mci.github.gomboksu.ui.screen.GombokSplashOverlay(
+                            iconRes = splashIconRes,
+                            animConfig = animConfig,
+                            onFinished = { showSplash = false }
+                        )
+                    } else if (isSplashVisible) {
+                        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
                     } else {
                         val navController = rememberNavController()
                         val snackBarHostState = remember { SnackbarHostState() }
@@ -474,7 +449,8 @@ class MainActivity : FragmentActivity() {
                                         scrollOffset = scrollOffset,
                                         previousScrollOffset = previousScrollOffset,
                                     ),
-                                    LocalNavBarEnabled provides navBarEnabled
+                                    LocalNavBarEnabled provides navBarEnabled,
+                                    LocalAnimationConfig provides animationConfigState.value
                                 ) {
                                     val visibleDestinations = remember(fullFeatured) {
                                         BottomBarDestination.entries.filter { fullFeatured || !it.rootRequired }
@@ -522,88 +498,99 @@ class MainActivity : FragmentActivity() {
                                         navController = navController,
                                         defaultTransitions = object : NavHostAnimatedDestinationStyle() {
                                             override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+                                                val cfg = animationConfigState.value
+                                                val dur = cfg.scaledDuration(300)
                                                 val targetRoute = targetState.destination.route
                                                 val initialRoute = initialState.destination.route
-
                                                 val targetIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == targetRoute }
                                                 val initialIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == initialRoute }
-
-                                                when {
-                                                    // Bottom bar → bottom bar: slide based on index direction
-                                                    targetIndex != -1 && initialIndex != -1 -> {
-                                                        val offsetSign = (if (targetIndex > initialIndex) 1 else -1) * animationDirection
-                                                        slideInHorizontally(initialOffsetX = { it * offsetSign }, animationSpec = tween(300))
-                                                    }
-                                                    // Detail page → bottom bar: slide in from left
-                                                    targetRoute in bottomBarRoutes && initialRoute !in bottomBarRoutes -> {
-                                                        slideInHorizontally(initialOffsetX = { -it * animationDirection }, animationSpec = tween(300))
-                                                    }
-                                                    // Bottom bar → detail page: slide in from right
-                                                    else -> slideInHorizontally(initialOffsetX = { it * animationDirection }, animationSpec = tween(300))
+                                                val offsetSign = when {
+                                                    targetIndex != -1 && initialIndex != -1 -> (if (targetIndex > initialIndex) 1 else -1) * animationDirection
+                                                    targetRoute in bottomBarRoutes && initialRoute !in bottomBarRoutes -> -1 * animationDirection
+                                                    else -> 1 * animationDirection
+                                                }
+                                                if (!cfg.enabled) {
+                                                    EnterTransition.None
+                                                } else when (cfg.pageTransitionStyle) {
+                                                    1 -> scaleIn(initialScale = 0.90f, animationSpec = cfg.springSpec(0.9f)) +
+                                                        slideInHorizontally(initialOffsetX = { (it * 0.25f * offsetSign).toInt() }, animationSpec = cfg.springSpec(0.95f)) +
+                                                        fadeIn(tween(dur))
+                                                    2 -> slideInHorizontally(initialOffsetX = { it * offsetSign }, animationSpec = cfg.springSpec(0.9f)) +
+                                                        fadeIn(tween(dur))
+                                                    3 -> slideInVertically(initialOffsetY = { (it * 0.16f).toInt() }, animationSpec = cfg.springSpec(0.95f)) +
+                                                        fadeIn(tween(dur))
+                                                    4 -> scaleIn(initialScale = 0.80f, animationSpec = cfg.springSpec(0.85f)) +
+                                                        fadeIn(tween(dur))
+                                                    else -> slideInHorizontally(initialOffsetX = { it * offsetSign }, animationSpec = tween(dur))
                                                 }
                                             }
 
                                             override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+                                                val cfg = animationConfigState.value
+                                                val dur = cfg.scaledDuration(260)
                                                 val targetRoute = targetState.destination.route
                                                 val initialRoute = initialState.destination.route
-
                                                 val targetIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == targetRoute }
                                                 val initialIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == initialRoute }
-
-                                                when {
-                                                    // Bottom bar → bottom bar: slide out opposite direction
-                                                    targetIndex != -1 && initialIndex != -1 -> {
-                                                        val offsetSign = (if (targetIndex > initialIndex) -1 else 1) * animationDirection
-                                                        slideOutHorizontally(targetOffsetX = { it * offsetSign }, animationSpec = tween(300))
-                                                    }
-                                                    // Bottom bar → detail page: slide out to left
-                                                    initialRoute in bottomBarRoutes && targetRoute !in bottomBarRoutes -> {
-                                                        slideOutHorizontally(targetOffsetX = { -it * animationDirection }, animationSpec = tween(300))
-                                                    }
-                                                    // Default
-                                                    else -> slideOutHorizontally(targetOffsetX = { -it * animationDirection }, animationSpec = tween(300))
+                                                val offsetSign = when {
+                                                    targetIndex != -1 && initialIndex != -1 -> (if (targetIndex > initialIndex) -1 else 1) * animationDirection
+                                                    else -> -1 * animationDirection
+                                                }
+                                                if (!cfg.enabled) {
+                                                    ExitTransition.None
+                                                } else when (cfg.pageTransitionStyle) {
+                                                    1 -> scaleOut(targetScale = 0.94f, animationSpec = tween(dur)) + fadeOut(tween(dur))
+                                                    2 -> scaleOut(targetScale = 0.88f, animationSpec = tween(dur)) + fadeOut(tween(dur))
+                                                    3 -> slideOutVertically(targetOffsetY = { -(it * 0.08f).toInt() }, animationSpec = tween(dur)) + fadeOut(tween(dur))
+                                                    4 -> scaleOut(targetScale = 0.90f, animationSpec = tween(dur)) + fadeOut(tween(dur))
+                                                    else -> slideOutHorizontally(targetOffsetX = { it * offsetSign }, animationSpec = tween(dur))
                                                 }
                                             }
 
                                             override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+                                                val cfg = animationConfigState.value
+                                                val dur = cfg.scaledDuration(280)
                                                 val targetRoute = targetState.destination.route
                                                 val initialRoute = initialState.destination.route
-
                                                 val targetIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == targetRoute }
                                                 val initialIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == initialRoute }
-
-                                                when {
-                                                    // Bottom bar → bottom bar pop: mirror of exit
-                                                    targetIndex != -1 && initialIndex != -1 -> {
-                                                        val offsetSign = (if (targetIndex > initialIndex) 1 else -1) * animationDirection
-                                                        slideInHorizontally(initialOffsetX = { it * offsetSign }, animationSpec = tween(300))
-                                                    }
-                                                    // Returning from detail → bottom bar: slide in from left
-                                                    targetRoute in bottomBarRoutes -> {
-                                                        slideInHorizontally(initialOffsetX = { -it * animationDirection }, animationSpec = tween(300))
-                                                    }
-                                                    else -> slideInHorizontally(initialOffsetX = { -it * animationDirection }, animationSpec = tween(300))
+                                                val offsetSign = when {
+                                                    targetIndex != -1 && initialIndex != -1 -> (if (targetIndex > initialIndex) 1 else -1) * animationDirection
+                                                    else -> -1 * animationDirection
+                                                }
+                                                if (!cfg.enabled) {
+                                                    EnterTransition.None
+                                                } else when (cfg.pageTransitionStyle) {
+                                                    1 -> scaleIn(initialScale = 0.94f, animationSpec = cfg.springSpec(0.95f)) + fadeIn(tween(dur))
+                                                    2 -> scaleIn(initialScale = 0.88f, animationSpec = cfg.springSpec(0.95f)) + fadeIn(tween(dur))
+                                                    3 -> slideInVertically(initialOffsetY = { -(it * 0.12f).toInt() }, animationSpec = cfg.springSpec(0.95f)) + fadeIn(tween(dur))
+                                                    4 -> scaleIn(initialScale = 0.86f, animationSpec = cfg.springSpec(0.9f)) + fadeIn(tween(dur))
+                                                    else -> slideInHorizontally(initialOffsetX = { it * offsetSign }, animationSpec = tween(dur))
                                                 }
                                             }
 
                                             override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+                                                val cfg = animationConfigState.value
+                                                val dur = cfg.scaledDuration(260)
                                                 val targetRoute = targetState.destination.route
                                                 val initialRoute = initialState.destination.route
-
                                                 val targetIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == targetRoute }
                                                 val initialIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == initialRoute }
-
-                                                when {
-                                                    // Bottom bar → bottom bar pop
-                                                    targetIndex != -1 && initialIndex != -1 -> {
-                                                        val offsetSign = (if (targetIndex > initialIndex) -1 else 1) * animationDirection
-                                                        slideOutHorizontally(targetOffsetX = { it * offsetSign }, animationSpec = tween(300))
-                                                    }
-                                                    // Detail page closing: slide out to right
-                                                    initialRoute !in bottomBarRoutes -> {
-                                                        slideOutHorizontally(targetOffsetX = { it * animationDirection }, animationSpec = tween(300))
-                                                    }
-                                                    else -> slideOutHorizontally(targetOffsetX = { it * animationDirection }, animationSpec = tween(300))
+                                                val offsetSign = when {
+                                                    targetIndex != -1 && initialIndex != -1 -> (if (targetIndex > initialIndex) -1 else 1) * animationDirection
+                                                    initialRoute !in bottomBarRoutes -> 1 * animationDirection
+                                                    else -> -1 * animationDirection
+                                                }
+                                                if (!cfg.enabled) {
+                                                    ExitTransition.None
+                                                } else when (cfg.pageTransitionStyle) {
+                                                    1 -> scaleOut(targetScale = 0.90f, animationSpec = tween(dur)) +
+                                                        slideOutHorizontally(targetOffsetX = { (it * 0.25f * offsetSign).toInt() }, animationSpec = tween(dur)) +
+                                                        fadeOut(tween(dur))
+                                                    2 -> slideOutHorizontally(targetOffsetX = { it * offsetSign }, animationSpec = tween(dur)) + fadeOut(tween(dur))
+                                                    3 -> slideOutVertically(targetOffsetY = { (it * 0.16f).toInt() }, animationSpec = tween(dur)) + fadeOut(tween(dur))
+                                                    4 -> scaleOut(targetScale = 0.82f, animationSpec = tween(dur)) + fadeOut(tween(dur))
+                                                    else -> slideOutHorizontally(targetOffsetX = { it * offsetSign }, animationSpec = tween(dur))
                                                 }
                                             }
                                         }
@@ -614,14 +601,15 @@ class MainActivity : FragmentActivity() {
                                 AnimatedVisibility(
                                     visible = showBottomBar,
                                     modifier = Modifier.align(Alignment.BottomCenter),
-                                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = animationConfigState.value.springSpec(1.0f)) + fadeIn(),
                                     exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                                 ) {
                                     BottomBar(
                                         navController = navController,
                                         lastValidSelection = lastValidNavbarSelection,
                                         navBarStyle = navBarStyleState.value,
-                                        showLabels = navBarShowLabelsState.value
+                                        showLabels = navBarShowLabelsState.value,
+                                        animConfig = animationConfigState.value
                                     )
                                 }
                             }
@@ -811,6 +799,24 @@ class MainActivity : FragmentActivity() {
         hapticFeedbackState.value = enabled
     }
 
+    fun updateAnimationConfig(config: AnimationConfig) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit()
+                .putBoolean("anim_enabled", config.enabled)
+                .putFloat("anim_bounce_multiplier", config.bounceMultiplier)
+                .putFloat("anim_speed_multiplier", config.speedMultiplier)
+                .putInt("anim_page_transition", config.pageTransitionStyle)
+                .putInt("anim_splash_style", config.splashStyle)
+                .putBoolean("anim_card_press_bounce", config.cardPressBounce)
+                .putBoolean("anim_staggered_entrance", config.staggeredEntrance)
+                .putBoolean("anim_status_pulse_glow", config.statusPulseGlow)
+                .putBoolean("anim_navbar_icon_bounce", config.navBarIconBounce)
+                .apply()
+        } catch (_: Exception) {}
+        animationConfigState.value = config
+    }
+
     override fun onStart() {
         super.onStart()
         mci.github.gomboksu.ui.util.AppLockManager.onActivityStart()
@@ -872,7 +878,8 @@ private fun BottomBar(
     navController: NavHostController,
     lastValidSelection: MutableState<Int>,
     navBarStyle: Int = 0, // 0 = Floating Pill, 1 = Classic Docked, 2 = Compact Pill
-    showLabels: Boolean = false
+    showLabels: Boolean = false,
+    animConfig: AnimationConfig = AnimationConfig()
 ) {
     val navigator = navController.rememberDestinationsNavigator()
     val isManager = Natives.isManager
@@ -907,8 +914,10 @@ private fun BottomBar(
         targetValue = (if (isDraggingPill) dragTargetIndex else effectiveSelectedIndex).toFloat(),
         animationSpec = if (isDraggingPill) {
             spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+        } else if (animConfig.enabled && animConfig.navBarIconBounce) {
+            animConfig.springSpec(stiffnessScale = 0.85f)
         } else {
-            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
         },
         label = "selectedIndex"
     )
@@ -1087,9 +1096,22 @@ private fun BottomBar(
                                             },
                                         contentAlignment = Alignment.Center
                                     ) {
+                                        val iconScale by animateFloatAsState(
+                                            targetValue = if (isSelected && animConfig.enabled && animConfig.navBarIconBounce) 1.15f else 1.0f,
+                                            animationSpec = if (animConfig.enabled && animConfig.navBarIconBounce) {
+                                                animConfig.springSpec(stiffnessScale = 1.1f)
+                                            } else {
+                                                tween(120)
+                                            },
+                                            label = "navIconScale_$index"
+                                        )
                                         Column(
                                             horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.Center
+                                            verticalArrangement = Arrangement.Center,
+                                            modifier = Modifier.graphicsLayer {
+                                                scaleX = iconScale
+                                                scaleY = iconScale
+                                            }
                                         ) {
                                             Icon(
                                                 if (isSelected) destination.iconSelected else destination.iconNotSelected,

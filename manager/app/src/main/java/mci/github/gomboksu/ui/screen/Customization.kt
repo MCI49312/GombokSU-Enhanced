@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,6 +48,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.dropUnlessResumed
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.destinations.AnimationsScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import mci.github.gomboksu.Natives
@@ -58,10 +60,13 @@ import mci.github.gomboksu.ui.component.SwitchItem
 import mci.github.gomboksu.ui.rememberScrollConnection
 import mci.github.gomboksu.ui.theme.AccentPreset
 import mci.github.gomboksu.ui.theme.AppFontPreset
+import mci.github.gomboksu.ui.util.AnimationConfig
 import mci.github.gomboksu.ui.util.AppIconPreset
+import mci.github.gomboksu.ui.util.LocalAnimationConfig
 import mci.github.gomboksu.ui.util.LocalSnackbarHost
 import mci.github.gomboksu.ui.util.LocaleHelper
 import mci.github.gomboksu.ui.util.findActivity
+import mci.github.gomboksu.ui.util.gombokPressBounce
 import mci.github.gomboksu.ui.util.refreshActivity
 import kotlin.math.roundToInt
 
@@ -218,6 +223,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     activity?.setNavBarShowLabels(false)
                     activity?.setSwipeNavigation(true)
                     activity?.setHapticFeedback(true)
+                    activity?.updateAnimationConfig(AnimationConfig())
 
                     Toast.makeText(context, R.string.customization_reset_done, Toast.LENGTH_SHORT).show()
                 },
@@ -306,6 +312,65 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.rgb_picker))
                     }
+                }
+            }
+
+            // ANIMATIONS STUDIO ENTRY CARD
+            val currentAnim = LocalAnimationConfig.current
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .gombokPressBounce()
+                    .clickable {
+                        navigator.navigate(AnimationsScreenDestination)
+                    }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.secondaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Animations",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (currentAnim.enabled) {
+                                String.format(
+                                    java.util.Locale.US,
+                                    "Bounce %.1fx • Speed %.1fx • Transitions & Physics",
+                                    currentAnim.bounceMultiplier,
+                                    currentAnim.speedMultiplier
+                                )
+                            } else {
+                                "Disabled • Tap to configure bounce & motion effects"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 

@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.dropUnlessResumed
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.AnimationsScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.CustomSpoofScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import mci.github.gomboksu.Natives
@@ -67,6 +68,7 @@ import mci.github.gomboksu.ui.util.LocalSnackbarHost
 import mci.github.gomboksu.ui.util.LocaleHelper
 import mci.github.gomboksu.ui.util.findActivity
 import mci.github.gomboksu.ui.util.gombokPressBounce
+import mci.github.gomboksu.ui.util.isCurrentAppSpoofed
 import mci.github.gomboksu.ui.util.refreshActivity
 import kotlin.math.roundToInt
 
@@ -371,6 +373,57 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+
+            // CUSTOM SPOOF ENTRY CARD (Spoofed build only)
+            if (isCurrentAppSpoofed()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .gombokPressBounce()
+                        .clickable {
+                            navigator.navigate(CustomSpoofScreenDestination)
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.tertiaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.VisibilityOff,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Custom Spoof",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Customize spoofed package ID & app name",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 

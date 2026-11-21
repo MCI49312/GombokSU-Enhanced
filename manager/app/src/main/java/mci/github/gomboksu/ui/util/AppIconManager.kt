@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.annotation.DrawableRes
+import mci.github.gomboksu.BuildConfig
 import mci.github.gomboksu.R
 
 enum class AppIconPreset(
@@ -63,7 +64,7 @@ enum class AppIconPreset(
             val pkg = context.packageName
 
             entries.forEach { preset ->
-                val component = ComponentName(pkg, pkg + preset.aliasSuffix)
+                val component = ComponentName(pkg, BuildConfig.APPLICATION_ID + preset.aliasSuffix)
                 val targetState = if (preset == selected) {
                     PackageManager.COMPONENT_ENABLED_STATE_ENABLED
                 } else {

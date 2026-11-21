@@ -840,6 +840,35 @@ private fun AppSettingsCard(
                     }
             )
 
+            if (isCurrentAppSpoofed()) {
+                ListItem(
+                    leadingContent = {
+                        Icon(
+                            Icons.Filled.VisibilityOff,
+                            null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    headlineContent = {
+                        Text(
+                            text = "Custom Spoof",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    },
+                    supportingContent = {
+                        Text("Change package ID and app name (${context.packageName})")
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable {
+                            navigator.navigate(CustomSpoofScreenDestination)
+                        }
+                )
+            }
+
             var checkUpdate by rememberSaveable {
                 mutableStateOf(prefs.getBoolean("check_update", true))
             }
@@ -1011,7 +1040,7 @@ private fun AppSettingsCard(
                             }
                             val uri: Uri = FileProvider.getUriForFile(
                                 context,
-                                "${BuildConfig.APPLICATION_ID}.fileprovider",
+                                "${context.packageName}.fileprovider",
                                 bugreport
                             )
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {

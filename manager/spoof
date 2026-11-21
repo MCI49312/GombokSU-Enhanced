@@ -1,11 +1,27 @@
 #!/bin/bash
+set -e
 
-# Generate 3 random lowercase words (6 letters each)
-word1=$(tr -dc 'a-z' </dev/urandom | head -c6)
-word2=$(tr -dc 'a-z' </dev/urandom | head -c6)
-word3=$(tr -dc 'a-z' </dev/urandom | head -c6)
+CUSTOM_PKG="$1"
+CUSTOM_NAME="$2"
 
-echo "Generated words:"
+if [ -n "$CUSTOM_PKG" ]; then
+    if [[ "$CUSTOM_PKG" =~ ^([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$ ]]; then
+        word1="${BASH_REMATCH[1]}"
+        word2="${BASH_REMATCH[2]}"
+        word3="${BASH_REMATCH[3]}"
+        echo "Using custom spoof package ID: $word1.$word2.$word3"
+    else
+        echo "ERROR: Custom package ID must have 3 lowercase dot-separated segments (e.g. com.my.notes), got: $CUSTOM_PKG" >&2
+        exit 1
+    fi
+else
+    # Generate 3 random lowercase words (6 letters each)
+    word1=$(tr -dc 'a-z' </dev/urandom | head -c6)
+    word2=$(tr -dc 'a-z' </dev/urandom | head -c6)
+    word3=$(tr -dc 'a-z' </dev/urandom | head -c6)
+fi
+
+echo "Spoofed package mapping:"
 echo "mci      -> $word1"
 echo "github   -> $word2"
 echo "gomboksu -> $word3"
@@ -19,11 +35,30 @@ find ./app/src/main/java ./app/src/main/aidl -depth -type d -name 'gomboksu' -ex
 find ./app/src/main/java ./app/src/main/aidl -depth -type d -name 'github' -execdir mv {} "$word2" \;
 find ./app/src/main/java ./app/src/main/aidl -depth -type d -name 'mci' -execdir mv {} "$word1" \;
 
-# Replace inside text source/config files ONLY (never binary .so, .jks, .png, .ttf)
+# Replace inside text source/config files ONLY (never binary .so, .jks, .p12, .png, .ttf)
 find . -type f \( -name "*.kt" -o -name "*.java" -o -name "*.xml" -o -name "*.aidl" -o -name "*.cc" -o -name "*.h" -o -name "*.kts" -o -name "*.pro" \) -exec sed -i \
     -e "s/mci\.github\.gomboksu/$word1.$word2.$word3/g" \
     -e "s/mci\/github\/gomboksu/$word1\/$word2\/$word3/g" \
     -e "s/mci_github_gomboksu/${word1}_${word2}_${word3}/g" {} +
+
+# Optional custom app name replacement across all strings.xml files
+if [ -n "$CUSTOM_NAME" ]; then
+    echo "Setting custom app name: $CUSTOM_NAME"
+    CUSTOM_NAME="$CUSTOM_NAME" python3 - <<'PYEOF'
+import glob, os, re
+from xml.sax.saxutils import escape
+
+new_name = escape(os.environ["CUSTOM_NAME"], {"'": "\\'"})
+pattern = re.compile(r'(<string name="app_name"[^>]*>)(.*?)(</string>)')
+for path in glob.glob("./app/src/main/res/values*/strings.xml"):
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+    updated = pattern.sub(lambda m: m.group(1) + new_name + m.group(3), content)
+    if updated != content:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(updated)
+PYEOF
+fi
 
 # Append '-spoofed' to managerVersionName in build.gradle.kts
 if [ -f "./build.gradle.kts" ]; then

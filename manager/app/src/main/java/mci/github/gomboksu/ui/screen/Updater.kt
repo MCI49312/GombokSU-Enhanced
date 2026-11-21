@@ -346,7 +346,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                         UpdaterDetailRow(
                             icon = if (isSpoofed) Icons.Filled.VisibilityOff else Icons.Filled.Verified,
                             label = "Detected Build Type",
-                            value = "$buildTypeLabel (${BuildConfig.APPLICATION_ID})"
+                            value = "$buildTypeLabel (${context.packageName})"
                         )
 
                         UpdaterDetailRow(

@@ -37,3 +37,6 @@
 -dontwarn javax.lang.model.util.SimpleTypeVisitor8
 -dontwarn javax.lang.model.util.Types
 -dontwarn javax.tools.Diagnostic$Kind
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+-keep class com.android.apksig.** { *; }
+-dontwarn com.android.apksig.**

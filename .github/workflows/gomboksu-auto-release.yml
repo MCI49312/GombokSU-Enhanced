@@ -11,6 +11,16 @@ on:
         required: false
         default: 'false'
         type: boolean
+      custom_spoof_package:
+        description: 'Optional custom 3-segment package ID for Spoofed APK (e.g. com.my.notes; leave empty for random)'
+        required: false
+        default: ''
+        type: string
+      custom_spoof_name:
+        description: 'Optional custom app name for Spoofed APK (leave empty for GombokSU Enhanced)'
+        required: false
+        default: ''
+        type: string
   push:
     branches:
       - dev
@@ -101,9 +111,12 @@ jobs:
 
       - name: Spoof Package ID
         if: matrix.spoofed == true
+        env:
+          CUSTOM_SPOOF_PACKAGE: ${{ github.event.inputs.custom_spoof_package || '' }}
+          CUSTOM_SPOOF_NAME: ${{ github.event.inputs.custom_spoof_name || '' }}
         run: |
           chmod +x spoof
-          ./spoof
+          ./spoof "$CUSTOM_SPOOF_PACKAGE" "$CUSTOM_SPOOF_NAME"
 
       - name: Extract libksud.so from Upstream KernelSU-Next APK
         env:

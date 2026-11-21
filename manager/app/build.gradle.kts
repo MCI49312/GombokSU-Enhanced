@@ -158,4 +158,5 @@ dependencies {
 
     implementation(libs.mmrl.ui)
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
+    implementation("com.android.tools.build:apksig:8.13.1")
 }

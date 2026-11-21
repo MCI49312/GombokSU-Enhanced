@@ -31,7 +31,8 @@ private val NORMAL_PACKAGE_ID = listOf("mci", "github", "gomboksu").joinToString
 
 fun isCurrentAppSpoofed(): Boolean {
     return BuildConfig.VERSION_NAME.contains("spoofed", ignoreCase = true) ||
-        BuildConfig.APPLICATION_ID != NORMAL_PACKAGE_ID
+        BuildConfig.APPLICATION_ID != NORMAL_PACKAGE_ID ||
+        ksuApp.packageName != NORMAL_PACKAGE_ID
 }
 
 fun parseSemVer(raw: String): List<Int> {
@@ -244,7 +245,7 @@ suspend fun installDownloadedApk(
 
         if (preferRootInstall && rootAvailable()) {
             val tmpPath = "/data/local/tmp/${apkFile.name.replace("'", "")}"
-            val pkg = BuildConfig.APPLICATION_ID
+            val pkg = context.packageName
             val isSamePackage = !isCurrentAppSpoofed()
             if (isSamePackage) {
                 // Detached root install so Android replacing the running package still relaunches cleanly
@@ -275,7 +276,7 @@ suspend fun installDownloadedApk(
         withContext(Dispatchers.Main) {
             val uri = FileProvider.getUriForFile(
                 context,
-                "${BuildConfig.APPLICATION_ID}.fileprovider",
+                "${context.packageName}.fileprovider",
                 apkFile
             )
             val intent = Intent(Intent.ACTION_VIEW).apply {

@@ -122,6 +122,16 @@ jobs:
           fi
           rm -rf upstream_ksun.apk upstream_extracted
 
+      - name: Sync UAPI Version with Upstream Release Tag
+        env:
+          TAG_NAME: ${{ needs.check-upstream.outputs.tag_name }}
+        run: |
+          UPSTREAM_UAPI=$(curl -fsSL "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/${TAG_NAME}/uapi/supercall.h" | grep -oP 'KERNEL_SU_UAPI_VERSION\s*=\s*\K[0-9]+' | head -n 1)
+          if [ -n "$UPSTREAM_UAPI" ]; then
+            echo "Syncing KERNEL_SU_UAPI_VERSION to $UPSTREAM_UAPI for $TAG_NAME"
+            sed -i -E "s/KERNEL_SU_UAPI_VERSION = [0-9]+;/KERNEL_SU_UAPI_VERSION = ${UPSTREAM_UAPI};/" ../uapi/supercall.h
+          fi
+
       - name: Setup Keystore (Use Permanent GombokSU Keystore 0x3e6)
         run: |
           {

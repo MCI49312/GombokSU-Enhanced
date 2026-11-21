@@ -534,10 +534,12 @@ fun installBoot(
         }
     }
 
-    // output dir
+    // output dir & filename
     val downloadsDir =
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-    cmd += " -o $downloadsDir"
+    val patchTimestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+    val outFileName = "gomboksu_enhanced_patched_${patchTimestamp}.img"
+    cmd += " -o $downloadsDir --out-name $outFileName"
 
     val result = flashWithIO("${getKsuDaemonPath()} $cmd", onStdout, onStderr)
     Log.i("KernelSU", "install boot result: ${result.isSuccess}")

@@ -41,7 +41,8 @@ data class Contributor(
     val name: String? = null,
     val githubUrl: String,
     val role: String,
-    val donationUrl: String
+    val subtitle: String? = null,
+    val donationUrl: String? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,8 +70,9 @@ fun ContributorsScreen(navigator: DestinationsNavigator) {
         Contributor(
             login = "MCI49312",
             githubUrl = "https://github.com/MCI49312",
-            role = "GombokSU developer",
-            donationUrl = "https://github.com/MCI49312/GombokSU-Enhanced"
+            role = "GombokSU Developer",
+            subtitle = "I do NOT accept donations",
+            donationUrl = null
         ),
         Contributor(
             login = "rifsxd",
@@ -160,7 +162,9 @@ fun ContributorsScreen(navigator: DestinationsNavigator) {
                         ContributorRow(
                             contributor = contributor,
                             onProfileClick = { uriHandler.openUri(contributor.githubUrl) },
-                            onDonateClick = { uriHandler.openUri(contributor.donationUrl) }
+                            onDonateClick = contributor.donationUrl?.let { url ->
+                                { uriHandler.openUri(url) }
+                            }
                         )
                     }
                 }
@@ -174,7 +178,7 @@ fun ContributorsScreen(navigator: DestinationsNavigator) {
 private fun ContributorRow(
     contributor: Contributor,
     onProfileClick: () -> Unit,
-    onDonateClick: () -> Unit
+    onDonateClick: (() -> Unit)? = null
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
 
@@ -247,28 +251,37 @@ private fun ContributorRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                contributor.subtitle?.takeIf { it.isNotBlank() }?.let { note ->
+                    Text(
+                        text = note,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 
-        OutlinedButton(
-            onClick = onDonateClick,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-            modifier = Modifier.height(30.dp),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Favorite,
-                contentDescription = null,
-                modifier = Modifier.size(13.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.width(5.dp))
-            Text(
-                text = stringResource(R.string.support),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        if (onDonateClick != null) {
+            OutlinedButton(
+                onClick = onDonateClick,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                modifier = Modifier.height(30.dp),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Favorite,
+                    contentDescription = null,
+                    modifier = Modifier.size(13.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(5.dp))
+                Text(
+                    text = stringResource(R.string.support),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

@@ -818,6 +818,28 @@ private fun AppSettingsCard(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            ListItem(
+                leadingContent = { Icon(Icons.Filled.SystemUpdate, null) },
+                headlineContent = {
+                    Text(
+                        text = "App Updater",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                supportingContent = {
+                    val buildType = if (isCurrentAppSpoofed()) "Spoofed" else "Normal"
+                    Text("Check for updates, auto-update, or reinstall ($buildType build)")
+                },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        navigator.navigate(UpdaterScreenDestination)
+                    }
+            )
+
             var checkUpdate by rememberSaveable {
                 mutableStateOf(prefs.getBoolean("check_update", true))
             }

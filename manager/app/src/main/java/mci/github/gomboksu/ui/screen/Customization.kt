@@ -136,6 +136,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
     var enableStartupAnimation by rememberSaveable { mutableStateOf(prefs.getBoolean("enable_startup_animation", true)) }
 
     var useBanner by rememberSaveable { mutableStateOf(prefs.getBoolean("use_banner", true)) }
+    var showAboutDevice by rememberSaveable { mutableStateOf(prefs.getBoolean("home_show_about_device", true)) }
     var autoExpandInfo by rememberSaveable { mutableStateOf(prefs.getBoolean("home_auto_expand_info", false)) }
     var showContributors by rememberSaveable { mutableStateOf(prefs.getBoolean("home_show_contributors", true)) }
     var showIssueReport by rememberSaveable { mutableStateOf(prefs.getBoolean("home_show_issue_report", true)) }
@@ -172,6 +173,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                         putBoolean("enable_haptic_feedback", true)
                         putBoolean("enable_startup_animation", true)
                         putBoolean("use_banner", true)
+                        putBoolean("home_show_about_device", true)
                         putBoolean("home_auto_expand_info", false)
                         putBoolean("home_show_contributors", true)
                         putBoolean("home_show_issue_report", true)
@@ -194,6 +196,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     hapticFeedback = true
                     enableStartupAnimation = true
                     useBanner = true
+                    showAboutDevice = true
                     autoExpandInfo = false
                     showContributors = true
                     showIssueReport = true
@@ -898,10 +901,22 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                 }
 
                 SwitchItem(
+                    icon = Icons.Filled.PhoneAndroid,
+                    title = "Show About Device on Home",
+                    summary = "Display the About Device info card on the Home screen",
+                    checked = showAboutDevice,
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                ) { checked ->
+                    prefs.edit { putBoolean("home_show_about_device", checked) }
+                    showAboutDevice = checked
+                }
+
+                SwitchItem(
                     icon = Icons.Filled.ExpandCircleDown,
                     title = stringResource(R.string.home_auto_expand_info),
                     summary = stringResource(R.string.home_auto_expand_info_summary),
                     checked = autoExpandInfo,
+                    enabled = showAboutDevice,
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                 ) { checked ->
                     prefs.edit { putBoolean("home_auto_expand_info", checked) }

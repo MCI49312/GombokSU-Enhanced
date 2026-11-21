@@ -73,6 +73,7 @@ import com.ramcosta.composedestinations.generated.destinations.InstallScreenDest
 import com.ramcosta.composedestinations.generated.destinations.ModuleScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.UpdaterScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import mci.github.gomboksu.*
 import mci.github.gomboksu.R
@@ -111,6 +112,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val activity = remember(context) { context.findActivity() as? mci.github.gomboksu.ui.MainActivity }
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+    val showAboutDevice = prefs.getBoolean("home_show_about_device", true)
     val autoExpandInfo = prefs.getBoolean("home_auto_expand_info", false)
     val showContributors = prefs.getBoolean("home_show_contributors", true)
     val showIssueReport = prefs.getBoolean("home_show_issue_report", true)
@@ -290,13 +292,24 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE)
                     .getBoolean("check_update", true)
             if (checkUpdate) {
-                UpdateCard()
+                UpdateCard(
+                    onOpenUpdater = {
+                        navigator.navigate(UpdaterScreenDestination)
+                    }
+                )
             }
 
-            InfoCard(autoExpand = developerOptionsEnabled || autoExpandInfo)
+            if (showAboutDevice) {
+                InfoCard(autoExpand = autoExpandInfo)
+            }
             if (showIssueReport) {
                 IssueReportCard()
             }
+            UpdaterLinkCard(
+                onClick = {
+                    navigator.navigate(UpdaterScreenDestination)
+                }
+            )
             if (showContributors) {
                 ContributorsCard(
                     onClick = {
@@ -451,206 +464,154 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
     }
 }
 
+private var lastAutoUpdatedTag: String? = null
+
 @Composable
-fun UpdateCard() {
+fun UpdateCard(onOpenUpdater: () -> Unit = {}) {
     val context = LocalContext.current
-    val latestVersionInfo = LatestVersionInfo()
-    
-    var preferSpoofed by remember { mutableStateOf(false) }
-    
-    val newVersion by produceState(initialValue = latestVersionInfo, key1 = preferSpoofed) {
+    val prefs = remember(context) { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val autoUpdateEnabled = remember(prefs) { prefs.getBoolean("auto_update_app", true) }
+    val isSpoofed = remember { isCurrentAppSpoofed() }
+    val buildTypeLabel = if (isSpoofed) "Spoofed" else "Normal"
+
+    val (currentVersionName, currentVersionCode) = remember(context) { getManagerVersion(context) }
+
+    val newVersion by produceState(initialValue = LatestVersionInfo(isSpoofed = isSpoofed)) {
         value = withContext(Dispatchers.IO) {
-            checkNewVersion(preferSpoofed)
+            checkNewVersion(preferSpoofed = isSpoofed)
         }
     }
 
-    val currentVersionCode = getManagerVersion(context).second
-    val newVersionCode = newVersion.versionCode
-    val newVersionUrl = newVersion.downloadUrl
-    val changelog = newVersion.changelog
-    val newVersionTag = newVersion.versionTag
+    val hasUpdate = remember(currentVersionName, currentVersionCode, newVersion) {
+        isUpdateAvailable(currentVersionName, currentVersionCode, newVersion)
+    }
 
-    val uriHandler = LocalUriHandler.current
-    val title = stringResource(id = R.string.module_changelog)
-    val updateText = stringResource(id = R.string.module_update)
+    var autoUpdating by remember { mutableStateOf(false) }
+    var autoUpdateText by remember { mutableStateOf<String?>(null) }
+
+    // Automatically download & install if a strictly newer release (same build type) is found
+    LaunchedEffect(hasUpdate, newVersion.versionTag, autoUpdateEnabled) {
+        if (hasUpdate && autoUpdateEnabled && lastAutoUpdatedTag != newVersion.versionTag) {
+            lastAutoUpdatedTag = newVersion.versionTag
+            autoUpdating = true
+            autoUpdateText = "Downloading ${newVersion.fileName}…"
+            val dlResult = downloadUpdateApk(context, newVersion) { progress, _, _ ->
+                if (progress >= 0f) {
+                    autoUpdateText = "Downloading ${newVersion.versionTag} (${(progress * 100).toInt()}%)…"
+                }
+            }
+            dlResult.onSuccess { apkFile ->
+                autoUpdateText = "Installing ${newVersion.versionTag}…"
+                val installResult = installDownloadedApk(context, apkFile, preferRootInstall = true)
+                autoUpdateText = installResult.getOrNull() ?: "Install failed: ${installResult.exceptionOrNull()?.message}"
+            }.onFailure { err ->
+                autoUpdateText = "Auto-update failed: ${err.message}"
+            }
+            autoUpdating = false
+        }
+    }
 
     AnimatedVisibility(
-        visible = newVersionCode > currentVersionCode,
+        visible = hasUpdate,
         enter = fadeIn() + expandVertically(),
         exit = shrinkVertically() + fadeOut()
     ) {
-        val updateDialog = rememberConfirmDialog(onConfirm = { uriHandler.openUri(newVersionUrl) })
         ElevatedCard(
-            modifier = Modifier.clickable {
-                if (changelog.isEmpty()) {
-                    uriHandler.openUri(newVersionUrl)
-                } else {
-                    updateDialog.showConfirm(
-                        title = title,
-                        content = changelog,
-                        markdown = true,
-                        confirm = updateText
-                    )
-                }
-            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenUpdater() },
             colors = CardDefaults.elevatedCardColors(
                 containerColor = MaterialTheme.colorScheme.primary
             )
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp)
+                    .padding(24.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Update,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(end = 20.dp)
-                    )
+                Icon(
+                    imageVector = Icons.Filled.SystemUpdate,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.padding(end = 20.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (!newVersionTag.isNullOrEmpty()) {
-                            stringResource(id = R.string.new_version_available, newVersionTag, newVersionCode)
-                        } else {
-                            stringResource(id = R.string.new_version_available, "", newVersionCode)
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = stringResource(
+                            id = R.string.new_version_available,
+                            newVersion.versionTag,
+                            newVersion.versionCode
+                        ),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = autoUpdateText ?: "Tap to open App Updater ($buildTypeLabel build)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+                    )
+                }
+                if (autoUpdating) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
-                
-                Spacer(modifier = Modifier.height(20.dp))
-                
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = stringResource(id = R.string.select_build_type),
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        if (!preferSpoofed) {
-                            FilledTonalButton(
-                                onClick = { preferSpoofed = false },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight(),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Verified,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Text(stringResource(id = R.string.main), style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
-                        } else {
-                            FilledTonalButton(
-                                onClick = { preferSpoofed = false },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight(),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.69f),
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                ),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Verified,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Text(stringResource(id = R.string.main), style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
-                        }
-                        
-                        if (preferSpoofed) {
-                            FilledTonalButton(
-                                onClick = { preferSpoofed = true },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight(),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.VisibilityOff,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Text(stringResource(id = R.string.spoofed), style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
-                        } else {
-                            FilledTonalButton(
-                                onClick = { preferSpoofed = true },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight(),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.69f),
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                ),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.VisibilityOff,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Text(stringResource(id = R.string.spoofed), style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
-                        }
-                    }
-                }
             }
+        }
+    }
+}
+
+@Composable
+private fun UpdaterLinkCard(onClick: () -> Unit) {
+    val context = LocalContext.current
+    val (currentVersionName, _) = remember(context) { getManagerVersion(context) }
+    val buildTypeLabel = if (isCurrentAppSpoofed()) "Spoofed" else "Normal"
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.SystemUpdate,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 20.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "App Updater",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "$currentVersionName ($buildTypeLabel) • Check for updates or reinstall",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -1169,13 +1130,11 @@ private fun InfoCard(autoExpand: Boolean = false) {
     val isManager = remember { Natives.isManager }
     val ksuVersion = remember(isManager) { if (isManager) Natives.version else null }
 
-    var expanded by rememberSaveable { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(autoExpand) }
     val developerOptionsEnabled = remember(prefs) { prefs.getBoolean("enable_developer_options", false) }
 
     LaunchedEffect(autoExpand) {
-        if (autoExpand) {
-            expanded = true
-        }
+        expanded = autoExpand
     }
 
     val moduleViewModel: ModuleViewModel = viewModel()

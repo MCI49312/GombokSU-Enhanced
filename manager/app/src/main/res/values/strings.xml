@@ -413,8 +413,8 @@
     <string name="custom_header_title">Custom App Header Title</string>
     <string name="header_title_label">Top Bar Title</string>
     <string name="header_subtitle_label">Top Bar Subtitle (Optional)</string>
-    <string name="home_auto_expand_info">Auto-expand System Info Card</string>
-    <string name="home_auto_expand_info_summary">Always show kernel, Android, ABI, SELinux, and Seccomp details on the Home screen.</string>
+    <string name="home_auto_expand_info">Auto-open About Device on Startup</string>
+    <string name="home_auto_expand_info_summary">Automatically expand the About Device dropdown on the Home page when the app starts.</string>
     <string name="home_show_issue_report">Show Issue Report Card</string>
     <string name="home_show_issue_report_summary">Display the bug report and feedback card on the Home screen.</string>
     <string name="home_show_contributors">Show Contributors Card</string>

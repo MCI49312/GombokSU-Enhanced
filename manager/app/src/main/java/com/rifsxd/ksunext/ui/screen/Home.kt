@@ -109,6 +109,12 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+    val autoExpandInfo = prefs.getBoolean("home_auto_expand_info", false)
+    val showContributors = prefs.getBoolean("home_show_contributors", true)
+    val showIssueReport = prefs.getBoolean("home_show_issue_report", true)
+    val customTitle = prefs.getString("custom_header_title", "GombokSU Enhanced")
+        ?.takeIf { it.isNotBlank() } ?: stringResource(R.string.app_name)
+    val customSubtitle = prefs.getString("custom_header_subtitle", "") ?: ""
     
     // Get scroll state for bottom bar tracking
     val bottomBarScrollState = LocalScrollState.current
@@ -133,6 +139,8 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             TopBar(
                 kernelVersion,
                 ksuVersion,
+                customTitle = customTitle,
+                customSubtitle = customSubtitle,
                 onInstallClick = {
                     navigator.navigate(InstallScreenDestination)
                 },
@@ -280,9 +288,13 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 UpdateCard()
             }
 
-            InfoCard(autoExpand = developerOptionsEnabled)
-            IssueReportCard()
-            ContributorsCard()
+            InfoCard(autoExpand = developerOptionsEnabled || autoExpandInfo)
+            if (showIssueReport) {
+                IssueReportCard()
+            }
+            if (showContributors) {
+                ContributorsCard()
+            }
             Spacer(Modifier)
         }
     }
@@ -661,6 +673,8 @@ fun RebootDropdownItem(@StringRes id: Int, reason: String = "") {
 private fun TopBar(
     kernelVersion: KernelVersion,
     ksuVersion: Int?,
+    customTitle: String,
+    customSubtitle: String,
     onInstallClick: () -> Unit,
     onSettingsClick: () -> Unit,
     navBarEnabled: Boolean,
@@ -703,17 +717,27 @@ private fun TopBar(
                 Icon(
                     painter = painterResource(R.drawable.ic_ksu_next),
                     contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .padding(end = 8.dp)
                         .graphicsLayer {
                             rotationZ = rotation
                         }
                 )
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black
-                )
+                Column {
+                    Text(
+                        text = customTitle,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black
+                    )
+                    if (customSubtitle.isNotBlank()) {
+                        Text(
+                            text = customSubtitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
         },
         actions = {

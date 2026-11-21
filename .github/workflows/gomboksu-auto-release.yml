@@ -1,0 +1,221 @@
+name: Auto-Patch & Release GombokSU Enhanced
+
+on:
+  schedule:
+    # Runs every 5 minutes so new KernelSU-Next APK releases are detected, patched with GombokSU Enhanced features, and released within 5-10 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force patch and release even if latest upstream tag already exists'
+        required: false
+        default: 'false'
+        type: boolean
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - 'manager/**'
+      - '.github/workflows/gomboksu-auto-release.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  check-upstream:
+    name: Check KernelSU-Next Latest Release
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      tag_name: ${{ steps.check.outputs.tag_name }}
+      version_name: ${{ steps.check.outputs.version_name }}
+      version_code: ${{ steps.check.outputs.version_code }}
+      apk_url: ${{ steps.check.outputs.apk_url }}
+      release_body: ${{ steps.check.outputs.release_body }}
+    steps:
+      - name: Query Upstream & Local Releases
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE_RELEASE: ${{ github.event.inputs.force_release || 'false' }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          UPSTREAM_JSON=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest)
+
+          TAG_NAME=$(echo "$UPSTREAM_JSON" | jq -r '.tag_name')
+          APK_NAME=$(echo "$UPSTREAM_JSON" | jq -r '.assets[] | select(.name | endswith(".apk") and (contains("spoofed") | not)) | .name' | head -n1)
+          APK_URL=$(echo "$UPSTREAM_JSON" | jq -r '.assets[] | select(.name | endswith(".apk") and (contains("spoofed") | not)) | .browser_download_url' | head -n1)
+
+          if [ -z "$APK_NAME" ] || [ "$APK_NAME" = "null" ]; then
+            APK_NAME=$(echo "$UPSTREAM_JSON" | jq -r '.assets[] | select(.name | endswith(".apk")) | .name' | head -n1)
+            APK_URL=$(echo "$UPSTREAM_JSON" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n1)
+          fi
+
+          echo "Detected upstream tag: $TAG_NAME"
+          echo "Detected upstream APK: $APK_NAME"
+
+          # Parse versionName and versionCode from KernelSU_Next_v3.4.2_33355-release.apk
+          if [[ "$APK_NAME" =~ _(v[^_]+)_([0-9]+)- ]]; then
+            VERSION_NAME="${BASH_REMATCH[1]}"
+            VERSION_CODE="${BASH_REMATCH[2]}"
+          else
+            VERSION_NAME="$TAG_NAME"
+            VERSION_CODE="33355"
+          fi
+
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "apk_url=$APK_URL" >> "$GITHUB_OUTPUT"
+
+          # Check if our repo already released this tag
+          OUR_REPO="${{ github.repository }}"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$OUR_REPO/releases/tags/$TAG_NAME")
+
+          if [ "$HTTP_STATUS" != "200" ] || [ "$FORCE_RELEASE" = "true" ] || [ "$EVENT_NAME" = "push" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "Triggering GombokSU Enhanced patch & build for $TAG_NAME ($VERSION_CODE)!"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "Release $TAG_NAME already exists in $OUR_REPO. Skipping."
+          fi
+
+  build-patched-apks:
+    name: Patch & Build GombokSU Enhanced (${{ matrix.spoofed && 'Spoofed' || 'Normal' }})
+    needs: check-upstream
+    if: needs.check-upstream.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        spoofed: [false, true]
+    defaults:
+      run:
+        working-directory: ./manager
+    steps:
+      - name: Checkout GombokSU Enhanced
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract libksud.so from Upstream KernelSU-Next APK
+        env:
+          APK_URL: ${{ needs.check-upstream.outputs.apk_url }}
+        run: |
+          curl -fsSL "$APK_URL" -o upstream_ksun.apk
+          mkdir -p upstream_extracted
+          unzip -q upstream_ksun.apk "lib/*" -d upstream_extracted
+          mkdir -p app/src/main/jniLibs/arm64-v8a
+          mkdir -p app/src/main/jniLibs/x86_64
+          mkdir -p app/src/main/jniLibs/riscv64
+          cp -f upstream_extracted/lib/arm64-v8a/libksud.so app/src/main/jniLibs/arm64-v8a/libksud.so
+          cp -f upstream_extracted/lib/x86_64/libksud.so app/src/main/jniLibs/x86_64/libksud.so
+          if [ -f upstream_extracted/lib/riscv64/libksud.so ]; then
+            cp -f upstream_extracted/lib/riscv64/libksud.so app/src/main/jniLibs/riscv64/libksud.so
+          fi
+          rm -rf upstream_ksun.apk upstream_extracted
+
+      - name: Spoof Package ID
+        if: matrix.spoofed == true
+        run: |
+          chmod +x spoof
+          ./spoof
+
+      - name: Setup Keystore (Generate Release Signing Key if not in Secrets)
+        run: |
+          if [ -n "${{ secrets.KEYSTORE }}" ]; then
+            {
+              echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}"
+              echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}"
+              echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}"
+              echo "KEYSTORE_FILE=key.jks"
+            } >> gradle.properties
+            echo "${{ secrets.KEYSTORE }}" | base64 -d > key.jks
+          else
+            keytool -genkeypair -v \
+              -keystore app/key.jks \
+              -alias gomboksu \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass gomboksu123 \
+              -keypass gomboksu123 \
+              -dname "CN=GombokSU Enhanced, OU=Root, O=GombokSU, L=Budapest, S=Pest, C=HU"
+            {
+              echo "KEYSTORE_PASSWORD=gomboksu123"
+              echo "KEY_ALIAS=gomboksu"
+              echo "KEY_PASSWORD=gomboksu123"
+              echo "KEYSTORE_FILE=key.jks"
+            } >> gradle.properties
+          fi
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build GombokSU Enhanced APK
+        env:
+          OVERRIDE_VERSION_NAME: ${{ needs.check-upstream.outputs.version_name }}
+          OVERRIDE_VERSION_CODE: ${{ needs.check-upstream.outputs.version_code }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.spoofed && 'gomboksu-spoofed' || 'gomboksu-normal' }}
+          path: manager/app/build/outputs/apk/release/*.apk
+
+  publish-release:
+    name: Publish GombokSU Enhanced Release
+    needs: [check-upstream, build-patched-apks]
+    if: needs.check-upstream.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Built APKs
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets
+
+      - name: Fetch Upstream Release Assets (LKMs & ksud)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.check-upstream.outputs.tag_name }}
+        run: |
+          mkdir -p release_output
+          cp release_assets/gomboksu-normal/*.apk release_output/
+          cp release_assets/gomboksu-spoofed/*.apk release_output/
+
+          # Also mirror upstream LKM .ko and ksud binaries so users have the full release suite
+          UPSTREAM_JSON=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/tags/$TAG_NAME")
+          echo "$UPSTREAM_JSON" | jq -r '.assets[] | select(.name | endswith(".apk") | not) | .browser_download_url' | while read -r asset_url; do
+            if [ -n "$asset_url" ]; then
+              fname=$(basename "$asset_url")
+              curl -fsSL "$asset_url" -o "release_output/$fname"
+            fi
+          done
+          ls -lh release_output/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.check-upstream.outputs.tag_name }}
+          name: "GombokSU Enhanced ${{ needs.check-upstream.outputs.tag_name }} (${{ needs.check-upstream.outputs.version_code }})"
+          body: |
+            ## GombokSU Enhanced ${{ needs.check-upstream.outputs.tag_name }}
+            Automatically synced and patched from upstream **KernelSU-Next ${{ needs.check-upstream.outputs.tag_name }}** (`versionCode ${{ needs.check-upstream.outputs.version_code }}`).
+
+            ### GombokSU Enhanced Features Included:
+            - **Custom Accent Color Engine**: 12 curated presets (Gombok Blue, Catppuccin, Emerald, Crimson, Amethyst, Sunset, Sakura, Cyber Gold, Ocean Teal, Nord Frost, Dracula, Mint) + Full RGB / Hex Color Picker
+            - **Theme Studio**: System / Light / Dark mode switcher, Material You (Monet) toggle, and Pure Black AMOLED mode
+            - **Shapes & Typography**: Custom Card Corner Radius slider (`4dp` – `28dp`) and Font Family selector (Default, Sans Serif, Monospace, Serif)
+            - **Navigation & Gestures**: Floating Pill, Classic Docked, and Compact Pill navigation bar styles, optional icon labels, auto-hide on scroll, horizontal swipe tab navigation, and haptic feedback controls
+            - **Home Dashboard Customization**: Custom top bar title & subtitle, auto-expand system info card, and toggles for Issue Report & Contributors cards
+            - **English Default**: Pre-configured in English out of the box
+          files: release_output/*
+          overwrite_files: true

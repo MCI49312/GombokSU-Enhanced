@@ -48,12 +48,16 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
+    val overrideCode = System.getenv("OVERRIDE_VERSION_CODE")?.trim()?.toIntOrNull()
+    if (overrideCode != null && overrideCode > 0) return overrideCode
     val commitCount = getGitCommitCount()
     val major = 1
     return major * 30000 + commitCount
 }
 
 fun getVersionName(): String {
+    val overrideName = System.getenv("OVERRIDE_VERSION_NAME")?.trim()
+    if (!overrideName.isNullOrEmpty()) return overrideName
     return getGitDescribe()
 }
 

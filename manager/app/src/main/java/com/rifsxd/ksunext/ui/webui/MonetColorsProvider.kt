@@ -26,12 +26,24 @@ object MonetColorsProvider {
 
         val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
         val amoledMode = prefs.getBoolean("enable_amoled", false)
-
-        val colorScheme = if (isDark) {
-            dynamicDarkColorScheme(context)
-        } else {
-            dynamicLightColorScheme(context)
+        val dynamicColor = prefs.getBoolean("enable_dynamic_color", false)
+        val accentPresetKey = prefs.getString("accent_preset", "gombok_blue") ?: "gombok_blue"
+        val customAccentArgb = prefs.getInt("custom_accent_argb", 0xFF3B82F6.toInt())
+        val themeMode = prefs.getInt("theme_mode", 0)
+        val effectiveDark = when (themeMode) {
+            1 -> false
+            2 -> true
+            else -> isDark
         }
+
+        val colorScheme = com.rifsxd.ksunext.ui.theme.resolveAppColorScheme(
+            context = context,
+            darkTheme = effectiveDark,
+            dynamicColor = dynamicColor,
+            amoledMode = amoledMode,
+            accentPresetKey = accentPresetKey,
+            customAccentArgb = customAccentArgb
+        )
 
         fun blend(c1: Color, c2: Color, ratio: Float): Color {
             val inv = 1f - ratio

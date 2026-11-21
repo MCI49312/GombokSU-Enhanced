@@ -8,7 +8,7 @@
     <string name="issue_report_github_link">https://github.com/KernelSU-Next/KernelSU-Next/issues</string>
     <string name="issue_report_telegram_link">https://t.me/ksunext</string>
     <string name="confirm">Confirm</string>
-    <string name="app_name" translatable="false">KernelSU-Next</string>
+    <string name="app_name" translatable="false">GombokSU Enhanced</string>
     <string name="home">Home</string>
     <string name="home_not_installed">Not installed</string>
     <string name="home_click_to_install">Click to install</string>
@@ -378,4 +378,47 @@
     <string name="module_unknown">Unknown Module</string>
     <string name="template_example_title">Example</string>
     <string name="template_example_description">This is an example template</string>
+    <string name="customization_summary">Custom accent colors, theme engine, shapes, fonts, navigation bar &amp; home layout</string>
+    <string name="customization_reset_done">Customization settings reset to default</string>
+    <string name="dynamic_monet_wallpaper">Dynamic Monet Wallpaper</string>
+    <string name="active_theme_format">Active Accent: %1$s</string>
+    <string name="rgb_picker">RGB Picker</string>
+    <string name="section_theme_accent">Theme &amp; Accent Colors</string>
+    <string name="theme_mode_title">Theme Mode</string>
+    <string name="theme_mode_system">System</string>
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
+    <string name="settings_dynamic_color">Dynamic Material You (Monet)</string>
+    <string name="settings_dynamic_color_summary">Use Android 12+ system wallpaper colors instead of custom accent presets.</string>
+    <string name="accent_color_presets">Custom Accent Color Palette</string>
+    <string name="accent_disabled_by_monet">Tap any swatch below to switch from Monet to Custom Accent</string>
+    <string name="custom_hex_rgb">Hex / RGB</string>
+    <string name="section_shapes_typography">Shapes, Fonts &amp; Language</string>
+    <string name="card_corner_radius">Card Corner Radius</string>
+    <string name="font_family_title">App Font Family</string>
+    <string name="section_navigation_behavior">Navigation Bar &amp; Gestures</string>
+    <string name="navbar_style_title">Navigation Bar Style</string>
+    <string name="navbar_style_floating">Floating Pill</string>
+    <string name="navbar_style_classic">Classic Dock</string>
+    <string name="navbar_style_compact">Compact Pill</string>
+    <string name="navbar_show_labels">Show Navigation Labels</string>
+    <string name="navbar_show_labels_summary">Display text labels underneath icons in the bottom navigation bar.</string>
+    <string name="navbar_auto_hide">Auto-hide Navigation Bar on Scroll</string>
+    <string name="navbar_auto_hide_summary">Automatically slide down the bottom bar when scrolling through lists.</string>
+    <string name="settings_swipe_navigation">Horizontal Swipe Navigation</string>
+    <string name="settings_swipe_navigation_summary">Swipe left or right anywhere on main screens to switch tabs.</string>
+    <string name="settings_haptic_feedback">Haptic Feedback</string>
+    <string name="settings_haptic_feedback_summary">Vibrate gently on swipe gestures and pull-to-refresh actions.</string>
+    <string name="section_home_dashboard">Home Dashboard &amp; Modules</string>
+    <string name="custom_header_title">Custom App Header Title</string>
+    <string name="header_title_label">Top Bar Title</string>
+    <string name="header_subtitle_label">Top Bar Subtitle (Optional)</string>
+    <string name="home_auto_expand_info">Auto-expand System Info Card</string>
+    <string name="home_auto_expand_info_summary">Always show kernel, Android, ABI, SELinux, and Seccomp details on the Home screen.</string>
+    <string name="home_show_issue_report">Show Issue Report Card</string>
+    <string name="home_show_issue_report_summary">Display the bug report and feedback card on the Home screen.</string>
+    <string name="home_show_contributors">Show Contributors Card</string>
+    <string name="home_show_contributors_summary">Display the contributors list at the bottom of the Home screen.</string>
+    <string name="custom_color_dialog_title">Custom RGB / Hex Accent Color</string>
+    <string name="hex_color_code">Hex Color Code (RRGGBB)</string>
 </resources>

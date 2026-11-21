@@ -32,6 +32,11 @@ class KernelSUApplication : Application(), ViewModelStoreOwner {
     override fun onCreate() {
         super.onCreate()
         LocaleHelper.migrateLegacyLocale(this)
+        val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+        if (!prefs.getBoolean("gomboksu_english_initialized", false)) {
+            prefs.edit().putBoolean("gomboksu_english_initialized", true).apply()
+            runCatching { LocaleHelper.setAppLocale(this, "en-US") }
+        }
         ksuApp = this
         Shell.setDefaultBuilder(createRootShellBuilder(true))
         Shell.enableVerboseLogging = BuildConfig.DEBUG

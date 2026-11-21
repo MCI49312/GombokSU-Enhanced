@@ -206,7 +206,18 @@ class MainActivity : FragmentActivity() {
     var navigateLoc by mutableStateOf<NavigateLocation?>(null)
     var moduleActionId by mutableStateOf<String?>(null)
     var amoledModeState = mutableStateOf(false)
+    var themeModeState = mutableStateOf(0)
+    var dynamicColorState = mutableStateOf(false)
+    var accentPresetState = mutableStateOf("gombok_blue")
+    var customAccentArgbState = mutableStateOf(0xFF3B82F6.toInt())
+    var cardRadiusDpState = mutableStateOf(16)
+    var fontStyleState = mutableStateOf("default")
     var navBarEnabled = mutableStateOf(true)
+    var navBarAutoHideState = mutableStateOf(true)
+    var navBarStyleState = mutableStateOf(0)
+    var navBarShowLabelsState = mutableStateOf(false)
+    var swipeNavigationState = mutableStateOf(true)
+    var hapticFeedbackState = mutableStateOf(true)
     private val handler = Handler(Looper.getMainLooper())
 
     val moduleViewModel: ModuleViewModel by viewModels()
@@ -237,7 +248,18 @@ class MainActivity : FragmentActivity() {
         try {
             val prefsInit = getSharedPreferences("settings", MODE_PRIVATE)
             amoledModeState.value = prefsInit.getBoolean("enable_amoled", false)
+            themeModeState.value = prefsInit.getInt("theme_mode", 0)
+            dynamicColorState.value = prefsInit.getBoolean("enable_dynamic_color", false)
+            accentPresetState.value = prefsInit.getString("accent_preset", "gombok_blue") ?: "gombok_blue"
+            customAccentArgbState.value = prefsInit.getInt("custom_accent_argb", 0xFF3B82F6.toInt())
+            cardRadiusDpState.value = prefsInit.getInt("card_radius_dp", 16)
+            fontStyleState.value = prefsInit.getString("font_style", "default") ?: "default"
             navBarEnabled.value = prefsInit.getBoolean("enable_navbar", true)
+            navBarAutoHideState.value = prefsInit.getBoolean("navbar_auto_hide", true)
+            navBarStyleState.value = prefsInit.getInt("navbar_style", 0)
+            navBarShowLabelsState.value = prefsInit.getBoolean("navbar_show_labels", false)
+            swipeNavigationState.value = prefsInit.getBoolean("enable_swipe_navigation", true)
+            hapticFeedbackState.value = prefsInit.getBoolean("enable_haptic_feedback", true)
         } catch (_: Exception) {}
 
         val isManager = Natives.isManager
@@ -262,7 +284,15 @@ class MainActivity : FragmentActivity() {
             handleIntent(intent)
 
         setContent { Box(modifier = Modifier.fillMaxSize()) {
-            KernelSUTheme(amoledMode = amoledModeState.value) {
+            KernelSUTheme(
+                themeMode = themeModeState.value,
+                dynamicColor = dynamicColorState.value,
+                amoledMode = amoledModeState.value,
+                accentPresetKey = accentPresetState.value,
+                customAccentArgb = customAccentArgbState.value,
+                cardRadiusDp = cardRadiusDpState.value,
+                fontStyleKey = fontStyleState.value
+            ) {
                 var showSplash by remember { mutableStateOf(enableStartupAnimation) }
                 var splashRotationTarget by remember { mutableStateOf(0f) }
                 val splashRotation by animateFloatAsState(
@@ -407,7 +437,7 @@ class MainActivity : FragmentActivity() {
                         val showBottomBar = when (currentDestination?.route) {
                             FlashScreenDestination.route -> false // Hide for FlashScreenDestination
                             ExecuteModuleActionScreenDestination.route -> false // Hide for ExecuteModuleActionScreen
-                            else -> !isScrollingDown.value && navBarEnabled.value
+                            else -> (!isScrollingDown.value || !navBarAutoHideState.value) && navBarEnabled.value
                         }
 
                         Scaffold(
@@ -447,15 +477,21 @@ class MainActivity : FragmentActivity() {
                                     val hostModifier = Modifier
                                         .padding(innerPadding)
                                         .fillMaxSize()
-                                        .horizontalSwipeNavigator(
-                                            currentRoute = currentRoute,
-                                            destinations = visibleDestinations,
-                                            isRtl = isRtl,
-                                            onNavigate = {
-                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.GestureEnd)
-                                                navigateToIndex(it)
-                                            }
-                                        )
+                                        .let { mod ->
+                                            if (swipeNavigationState.value) {
+                                                mod.horizontalSwipeNavigator(
+                                                    currentRoute = currentRoute,
+                                                    destinations = visibleDestinations,
+                                                    isRtl = isRtl,
+                                                    onNavigate = {
+                                                        if (hapticFeedbackState.value) {
+                                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.GestureEnd)
+                                                        }
+                                                        navigateToIndex(it)
+                                                    }
+                                                )
+                                            } else mod
+                                        }
 
                                     DestinationsNavHost(
                                         modifier = hostModifier,
@@ -558,7 +594,12 @@ class MainActivity : FragmentActivity() {
                                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                                     exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                                 ) {
-                                    BottomBar(navController, lastValidNavbarSelection)
+                                    BottomBar(
+                                        navController = navController,
+                                        lastValidSelection = lastValidNavbarSelection,
+                                        navBarStyle = navBarStyleState.value,
+                                        showLabels = navBarShowLabelsState.value
+                                    )
                                 }
                             }
                         }
@@ -574,7 +615,15 @@ class MainActivity : FragmentActivity() {
     @Composable
     private fun AppLockOverlay(amoledMode: Boolean) {
         if (appLockState.value) {
-            KernelSUTheme(amoledMode = amoledMode) {
+            KernelSUTheme(
+                themeMode = themeModeState.value,
+                dynamicColor = dynamicColorState.value,
+                amoledMode = amoledMode,
+                accentPresetKey = accentPresetState.value,
+                customAccentArgb = customAccentArgbState.value,
+                cardRadiusDp = cardRadiusDpState.value,
+                fontStyleKey = fontStyleState.value
+            ) {
                 androidx.compose.material3.Surface(modifier = Modifier.fillMaxSize()) {
                     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
                     var isPromptShowing by remember { mutableStateOf(false) }
@@ -634,12 +683,100 @@ class MainActivity : FragmentActivity() {
         amoledModeState.value = enabled
     }
 
+    fun setThemeMode(mode: Int) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putInt("theme_mode", mode).apply()
+        } catch (_: Exception) {}
+        themeModeState.value = mode
+    }
+
+    fun setDynamicColor(enabled: Boolean) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putBoolean("enable_dynamic_color", enabled).apply()
+        } catch (_: Exception) {}
+        dynamicColorState.value = enabled
+    }
+
+    fun setAccentPreset(key: String) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putString("accent_preset", key).apply()
+        } catch (_: Exception) {}
+        accentPresetState.value = key
+    }
+
+    fun setCustomAccentArgb(argb: Int) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putInt("custom_accent_argb", argb).apply()
+        } catch (_: Exception) {}
+        customAccentArgbState.value = argb
+    }
+
+    fun setCardRadiusDp(radiusDp: Int) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putInt("card_radius_dp", radiusDp).apply()
+        } catch (_: Exception) {}
+        cardRadiusDpState.value = radiusDp
+    }
+
+    fun setFontStyle(styleKey: String) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putString("font_style", styleKey).apply()
+        } catch (_: Exception) {}
+        fontStyleState.value = styleKey
+    }
+
     fun setNavBarEnabled(enabled: Boolean) {
         try {
             val prefs = getSharedPreferences("settings", MODE_PRIVATE)
             prefs.edit().putBoolean("enable_navbar", enabled).apply()
         } catch (_: Exception) {}
         navBarEnabled.value = enabled
+    }
+
+    fun setNavBarAutoHide(enabled: Boolean) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putBoolean("navbar_auto_hide", enabled).apply()
+        } catch (_: Exception) {}
+        navBarAutoHideState.value = enabled
+    }
+
+    fun setNavBarStyle(style: Int) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putInt("navbar_style", style).apply()
+        } catch (_: Exception) {}
+        navBarStyleState.value = style
+    }
+
+    fun setNavBarShowLabels(show: Boolean) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putBoolean("navbar_show_labels", show).apply()
+        } catch (_: Exception) {}
+        navBarShowLabelsState.value = show
+    }
+
+    fun setSwipeNavigation(enabled: Boolean) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putBoolean("enable_swipe_navigation", enabled).apply()
+        } catch (_: Exception) {}
+        swipeNavigationState.value = enabled
+    }
+
+    fun setHapticFeedback(enabled: Boolean) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putBoolean("enable_haptic_feedback", enabled).apply()
+        } catch (_: Exception) {}
+        hapticFeedbackState.value = enabled
     }
 
     override fun onStart() {
@@ -701,7 +838,9 @@ class MainActivity : FragmentActivity() {
 @Composable
 private fun BottomBar(
     navController: NavHostController,
-    lastValidSelection: MutableState<Int>
+    lastValidSelection: MutableState<Int>,
+    navBarStyle: Int = 0, // 0 = Floating Pill, 1 = Classic Docked, 2 = Compact Pill
+    showLabels: Boolean = false
 ) {
     val navigator = navController.rememberDestinationsNavigator()
     val isManager = Natives.isManager
@@ -752,6 +891,32 @@ private fun BottomBar(
         }
     }
 
+    if (navBarStyle == 1) {
+        NavigationBar(
+            modifier = Modifier.fillMaxWidth(),
+            tonalElevation = 3.dp
+        ) {
+            visibleDestinations.forEachIndexed { index, destination ->
+                val isSelected = index == effectiveSelectedIndex
+                NavigationBarItem(
+                    selected = isSelected,
+                    onClick = { navigateToIndex(index) },
+                    icon = {
+                        Icon(
+                            if (isSelected) destination.iconSelected else destination.iconNotSelected,
+                            stringResource(destination.label)
+                        )
+                    },
+                    label = if (showLabels) {
+                        { Text(stringResource(destination.label)) }
+                    } else null,
+                    alwaysShowLabel = showLabels
+                )
+            }
+        }
+        return
+    }
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -771,16 +936,17 @@ private fun BottomBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = horizontalScreenPadding, vertical = 14.dp),
+                .padding(horizontal = horizontalScreenPadding, vertical = if (navBarStyle == 2) 10.dp else 14.dp),
             contentAlignment = Alignment.Center
         ) {
             Surface(
                 modifier = Modifier.wrapContentWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(if (navBarStyle == 2) 20.dp else 24.dp),
                 tonalElevation = 3.dp,
                 shadowElevation = 8.dp
             ) {
-                val itemSize = 56.dp
+                val itemSize = if (navBarStyle == 2) 48.dp else if (showLabels) 64.dp else 56.dp
+                val barHeight = if (navBarStyle == 2) 60.dp else if (showLabels) 76.dp else 72.dp
                 val itemSpacing = 4.dp
                 val containerPadding = 7.dp
 
@@ -797,7 +963,7 @@ private fun BottomBar(
                 Box(
                     modifier = Modifier
                         .width(navBarWidth)
-                        .height(72.dp)
+                        .height(barHeight)
                         .pointerInput(visibleDestinations, effectiveSelectedIndex, isRtl) {
                             detectDragGestures(
                                 onDragStart = { offset ->
@@ -894,15 +1060,32 @@ private fun BottomBar(
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        if (isSelected) destination.iconSelected else destination.iconNotSelected,
-                                        stringResource(destination.label),
-                                        tint = if (isSelected) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            if (isSelected) destination.iconSelected else destination.iconNotSelected,
+                                            stringResource(destination.label),
+                                            tint = if (isSelected) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            }
+                                        )
+                                        if (showLabels) {
+                                            Text(
+                                                text = stringResource(destination.label),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                maxLines = 1,
+                                                color = if (isSelected) {
+                                                    MaterialTheme.colorScheme.primary
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                }
+                                            )
                                         }
-                                    )
+                                    }
                                 }
                             }
                         }

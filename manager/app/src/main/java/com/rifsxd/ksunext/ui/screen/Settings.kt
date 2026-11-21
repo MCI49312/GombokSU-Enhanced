@@ -934,13 +934,16 @@ private fun AppSettingsCard(
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { navigator.navigate(CustomizationScreenDestination) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                leadingContent = { Icon(Icons.Filled.Palette, null) },
+                leadingContent = { Icon(Icons.Filled.Palette, null, tint = MaterialTheme.colorScheme.primary) },
                 headlineContent = {
                     Text(
                         text = stringResource(R.string.customization),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
+                },
+                supportingContent = {
+                    Text(stringResource(R.string.customization_summary))
                 }
             )
 
@@ -970,7 +973,7 @@ private fun AppSettingsCard(
                     onSave = {
                         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH_mm")
                         val current = LocalDateTime.now().format(formatter)
-                        exportBugreportLauncher.launch("KernelSU_Next_bugreport_${current}.tar.gz")
+                        exportBugreportLauncher.launch("GombokSU_Enhanced_bugreport_${current}.tar.gz")
                         showBottomsheet = false
                     },
                     onShare = {

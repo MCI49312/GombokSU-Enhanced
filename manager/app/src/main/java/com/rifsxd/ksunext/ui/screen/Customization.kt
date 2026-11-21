@@ -54,8 +54,10 @@ import com.rifsxd.ksunext.ui.MainActivity
 import com.rifsxd.ksunext.ui.component.SwitchItem
 import com.rifsxd.ksunext.ui.rememberScrollConnection
 import com.rifsxd.ksunext.ui.theme.AccentPreset
+import com.rifsxd.ksunext.ui.theme.AppFontPreset
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.LocaleHelper
+import com.rifsxd.ksunext.ui.util.findActivity
 import com.rifsxd.ksunext.ui.util.refreshActivity
 import kotlin.math.roundToInt
 
@@ -87,7 +89,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + if (isNavBarHidden) 0.dp else 112.dp
 
     val context = LocalContext.current
-    val activity = context as? MainActivity
+    val activity = remember(context) { context.findActivity() as? MainActivity }
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     var currentAppLocale by remember {
@@ -486,35 +488,93 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
 
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
 
-                Text(
-                    text = stringResource(R.string.font_family_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                )
-                val fontOptions = listOf(
-                    "default" to "Default",
-                    "sans" to "Sans Serif",
-                    "monospace" to "Monospace",
-                    "serif" to "Serif"
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    fontOptions.forEach { (key, label) ->
-                        val selected = fontStyleKey == key
-                        FilterChip(
-                            selected = selected,
-                            onClick = {
-                                fontStyleKey = key
-                                activity?.setFontStyle(key)
-                            },
-                            label = { Text(label, maxLines = 1) },
-                            modifier = Modifier.weight(1f)
+                val currentFontPreset = AppFontPreset.fromKey(fontStyleKey)
+                var fontMenuExpanded by remember { mutableStateOf(false) }
+
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.font_family_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
                         )
+                        Text(
+                            text = "${AppFontPreset.entries.size} Fonts Available",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    ExposedDropdownMenuBox(
+                        expanded = fontMenuExpanded,
+                        onExpandedChange = { fontMenuExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = "${currentFontPreset.displayName} (${currentFontPreset.category})",
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(Icons.Filled.FontDownload, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = fontMenuExpanded)
+                            },
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                fontFamily = currentFontPreset.fontFamily
+                            ),
+                            modifier = Modifier
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                .fillMaxWidth()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = fontMenuExpanded,
+                            onDismissRequest = { fontMenuExpanded = false },
+                            modifier = Modifier.heightIn(max = 360.dp)
+                        ) {
+                            AppFontPreset.entries.forEach { preset ->
+                                val isSelected = currentFontPreset == preset
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(
+                                                text = preset.displayName,
+                                                fontFamily = preset.fontFamily,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = preset.category,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    },
+                                    trailingIcon = if (isSelected) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Filled.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    } else null,
+                                    onClick = {
+                                        fontStyleKey = preset.key
+                                        prefs.edit { putString("font_style", preset.key) }
+                                        activity?.setFontStyle(preset.key)
+                                        fontMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -551,8 +611,10 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     checked = enableNavBar,
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                 ) { checked ->
-                    activity?.setNavBarEnabled(checked)
                     enableNavBar = checked
+                    prefs.edit { putBoolean("enable_navbar", checked) }
+                    bottomBarScrollState?.isScrollingDown?.value = false
+                    activity?.setNavBarEnabled(checked)
                 }
 
                 if (enableNavBar) {
@@ -579,6 +641,8 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                                 selected = selected,
                                 onClick = {
                                     navBarStyle = styleId
+                                    prefs.edit { putInt("navbar_style", styleId) }
+                                    bottomBarScrollState?.isScrollingDown?.value = false
                                     activity?.setNavBarStyle(styleId)
                                 },
                                 label = { Text(label, maxLines = 1) },
@@ -595,6 +659,8 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                     ) { checked ->
                         navBarShowLabels = checked
+                        prefs.edit { putBoolean("navbar_show_labels", checked) }
+                        bottomBarScrollState?.isScrollingDown?.value = false
                         activity?.setNavBarShowLabels(checked)
                     }
 
@@ -606,6 +672,8 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                     ) { checked ->
                         navBarAutoHide = checked
+                        prefs.edit { putBoolean("navbar_auto_hide", checked) }
+                        bottomBarScrollState?.isScrollingDown?.value = false
                         activity?.setNavBarAutoHide(checked)
                     }
                 }

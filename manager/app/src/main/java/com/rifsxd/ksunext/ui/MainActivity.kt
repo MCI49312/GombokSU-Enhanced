@@ -381,6 +381,18 @@ class MainActivity : FragmentActivity() {
                         // Remember the last valid navbar selection (persists across navbar hide/show)
                         val lastValidNavbarSelection = remember { mutableStateOf(0) }
 
+                        LaunchedEffect(currentDestination?.route) {
+                            isScrollingDown.value = false
+                            scrollOffset.value = 0f
+                            previousScrollOffset.value = 0f
+                        }
+
+                        LaunchedEffect(navBarEnabled.value, navBarStyleState.value, navBarShowLabelsState.value, navBarAutoHideState.value) {
+                            isScrollingDown.value = false
+                            scrollOffset.value = 0f
+                            previousScrollOffset.value = 0f
+                        }
+
                         LaunchedEffect(zipUri, navigateLoc, moduleActionId) {
                             if (moduleActionId != null) {
                                 navigator.navigate(ExecuteModuleActionScreenDestination(moduleActionId!!))
@@ -914,176 +926,172 @@ private fun BottomBar(
                 )
             }
         }
-        return
-    }
-
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                bottom = WindowInsets.navigationBars
-                    .asPaddingValues()
-                    .calculateBottomPadding()
-            )
-    ) {
-        val screenWidth = maxWidth
-        val horizontalScreenPadding = when {
-            screenWidth > 600.dp -> 32.dp
-            screenWidth > 400.dp -> 24.dp
-            else -> 16.dp
-        }
-
-        Box(
+    } else {
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = horizontalScreenPadding, vertical = if (navBarStyle == 2) 10.dp else 14.dp),
-            contentAlignment = Alignment.Center
+                .padding(
+                    bottom = WindowInsets.navigationBars
+                        .asPaddingValues()
+                        .calculateBottomPadding()
+                )
         ) {
-            Surface(
-                modifier = Modifier.wrapContentWidth(),
-                shape = RoundedCornerShape(if (navBarStyle == 2) 20.dp else 24.dp),
-                tonalElevation = 3.dp,
-                shadowElevation = 8.dp
+            val screenWidth = maxWidth
+            val horizontalScreenPadding = when {
+                screenWidth > 600.dp -> 32.dp
+                screenWidth > 400.dp -> 24.dp
+                else -> 16.dp
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = horizontalScreenPadding, vertical = if (navBarStyle == 2) 10.dp else 14.dp),
+                contentAlignment = Alignment.Center
             ) {
-                val itemSize = if (navBarStyle == 2) 48.dp else if (showLabels) 64.dp else 56.dp
-                val barHeight = if (navBarStyle == 2) 60.dp else if (showLabels) 76.dp else 72.dp
-                val itemSpacing = 4.dp
-                val containerPadding = 7.dp
-
-                val navBarWidth = (itemSize * visibleDestinations.size) +
-                        (itemSpacing * (visibleDestinations.size - 1)) +
-                        (containerPadding * 2)
-
-                val density = LocalDensity.current
-                val isRtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
-                val itemSizePx = with(density) { itemSize.toPx() }
-                val itemSpacingPx = with(density) { itemSpacing.toPx() }
-                val containerPaddingPx = with(density) { containerPadding.toPx() }
-
-                Box(
-                    modifier = Modifier
-                        .width(navBarWidth)
-                        .height(barHeight)
-                        .pointerInput(visibleDestinations, effectiveSelectedIndex, isRtl) {
-                            detectDragGestures(
-                                onDragStart = { offset ->
-                                    val extraTouchArea = with(density) { 20.dp.toPx() }
-
-                                    val visualIndex = if (isRtl) visibleDestinations.lastIndex - effectiveSelectedIndex else effectiveSelectedIndex
-
-                                    val pillLeft = containerPaddingPx +
-                                            visualIndex * (itemSizePx + itemSpacingPx) - extraTouchArea
-
-                                    val pillRight = pillLeft + itemSizePx + (extraTouchArea * 2)
-
-                                    if (offset.x in pillLeft..pillRight) {
-                                        isDraggingPill = true
-                                        dragTargetIndex = effectiveSelectedIndex
-                                    }
-                                },
-                                onDragEnd = {
-                                    if (isDraggingPill) {
-                                        navigateToIndex(dragTargetIndex)
-                                        isDraggingPill = false
-                                    }
-                                },
-                                onDragCancel = {
-                                    isDraggingPill = false
-                                },
-                                onDrag = { change, _ ->
-                                    if (isDraggingPill) {
-                                        change.consume()
-                                        // Map finger X to nearest icon index
-                                        val visualIndex = ((change.position.x - containerPaddingPx) /
-                                                (itemSizePx + itemSpacingPx))
-                                            .toInt()
-                                            .coerceIn(0, visibleDestinations.lastIndex)
-                                        dragTargetIndex = if (isRtl) visibleDestinations.lastIndex - visualIndex else visualIndex
-                                    }
-                                }
-                            )
-                        }
+                Surface(
+                    modifier = Modifier.wrapContentWidth(),
+                    shape = RoundedCornerShape(if (navBarStyle == 2) 20.dp else 24.dp),
+                    tonalElevation = 3.dp,
+                    shadowElevation = 8.dp
                 ) {
-                    var totalWidth by remember { mutableStateOf(0) }
+                    val itemSize = if (navBarStyle == 2) 48.dp else if (showLabels) 64.dp else 56.dp
+                    val barHeight = if (navBarStyle == 2) 60.dp else if (showLabels) 76.dp else 72.dp
+                    val itemSpacing = 4.dp
+                    val containerPadding = 7.dp
+
+                    val navBarWidth = (itemSize * visibleDestinations.size) +
+                            (itemSpacing * (visibleDestinations.size - 1)) +
+                            (containerPadding * 2)
+
+                    val density = LocalDensity.current
+                    val isRtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+                    val itemSizePx = with(density) { itemSize.toPx() }
+                    val itemSpacingPx = with(density) { itemSpacing.toPx() }
+                    val containerPaddingPx = with(density) { containerPadding.toPx() }
 
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = containerPadding)
-                            .onSizeChanged { totalWidth = it.width }
-                    ) {
-                        // Sliding pill indicator
-                        if (totalWidth > 0 && visibleDestinations.isNotEmpty()) {
-                            val indicatorOffset = (itemSizePx + itemSpacingPx) * animatedSelectedIndex
+                            .width(navBarWidth)
+                            .height(barHeight)
+                            .pointerInput(visibleDestinations, effectiveSelectedIndex, isRtl, navBarStyle, showLabels) {
+                                detectDragGestures(
+                                    onDragStart = { offset ->
+                                        val extraTouchArea = with(density) { 20.dp.toPx() }
 
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .padding(vertical = 8.dp)
-                                    .offset {
-                                        IntOffset(x = indicatorOffset.toInt(), y = 0)
-                                    }
-                                    .width(itemSize)
-                                    // Subtle scale-up when dragging, like iOS
-                                    .graphicsLayer {
-                                        scaleX = if (isDraggingPill) 1.1f else 1f
-                                        scaleY = if (isDraggingPill) 1.1f else 1f
+                                        val visualIndex = if (isRtl) visibleDestinations.lastIndex - effectiveSelectedIndex else effectiveSelectedIndex
+
+                                        val pillLeft = containerPaddingPx +
+                                                visualIndex * (itemSizePx + itemSpacingPx) - extraTouchArea
+
+                                        val pillRight = pillLeft + itemSizePx + (extraTouchArea * 2)
+
+                                        if (offset.x in pillLeft..pillRight) {
+                                            isDraggingPill = true
+                                            dragTargetIndex = effectiveSelectedIndex
+                                        }
                                     },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(itemSize)
-                                        .background(
-                                            color = MaterialTheme.colorScheme.secondaryContainer,
-                                            shape = RoundedCornerShape(16.dp)
-                                        )
+                                    onDragEnd = {
+                                        if (isDraggingPill) {
+                                            navigateToIndex(dragTargetIndex)
+                                            isDraggingPill = false
+                                        }
+                                    },
+                                    onDragCancel = {
+                                        isDraggingPill = false
+                                    },
+                                    onDrag = { change, _ ->
+                                        if (isDraggingPill) {
+                                            change.consume()
+                                            // Map finger X to nearest icon index
+                                            val visualIndex = ((change.position.x - containerPaddingPx) /
+                                                    (itemSizePx + itemSpacingPx))
+                                                .toInt()
+                                                .coerceIn(0, visibleDestinations.lastIndex)
+                                            dragTargetIndex = if (isRtl) visibleDestinations.lastIndex - visualIndex else visualIndex
+                                        }
+                                    }
                                 )
                             }
-                        }
-                        // Navigation items
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.spacedBy(itemSpacing),
-                            verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = containerPadding)
                         ) {
-                            visibleDestinations.forEachIndexed { index, destination ->
-                                val isSelected = index == (if (isDraggingPill) dragTargetIndex else effectiveSelectedIndex)
+                            // Sliding pill indicator
+                            if (visibleDestinations.isNotEmpty()) {
+                                val indicatorOffset = (itemSizePx + itemSpacingPx) * animatedSelectedIndex
 
                                 Box(
                                     modifier = Modifier
-                                        .size(itemSize)
-                                        .clip(MaterialTheme.shapes.large)
-                                        .clickable {
-                                            if (destination.direction.route == currentRoute) return@clickable
-                                            navigateToIndex(index)
+                                        .fillMaxHeight()
+                                        .padding(vertical = 8.dp)
+                                        .offset {
+                                            IntOffset(x = indicatorOffset.toInt(), y = 0)
+                                        }
+                                        .width(itemSize)
+                                        // Subtle scale-up when dragging, like iOS
+                                        .graphicsLayer {
+                                            scaleX = if (isDraggingPill) 1.1f else 1f
+                                            scaleY = if (isDraggingPill) 1.1f else 1f
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
+                                    Box(
+                                        modifier = Modifier
+                                            .size(itemSize)
+                                            .background(
+                                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                                shape = RoundedCornerShape(16.dp)
+                                            )
+                                    )
+                                }
+                            }
+                            // Navigation items
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.spacedBy(itemSpacing),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                visibleDestinations.forEachIndexed { index, destination ->
+                                    val isSelected = index == (if (isDraggingPill) dragTargetIndex else effectiveSelectedIndex)
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(itemSize)
+                                            .clip(MaterialTheme.shapes.large)
+                                            .clickable {
+                                                if (destination.direction.route == currentRoute) return@clickable
+                                                navigateToIndex(index)
+                                            },
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(
-                                            if (isSelected) destination.iconSelected else destination.iconNotSelected,
-                                            stringResource(destination.label),
-                                            tint = if (isSelected) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            }
-                                        )
-                                        if (showLabels) {
-                                            Text(
-                                                text = stringResource(destination.label),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                maxLines = 1,
-                                                color = if (isSelected) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                if (isSelected) destination.iconSelected else destination.iconNotSelected,
+                                                stringResource(destination.label),
+                                                tint = if (isSelected) {
                                                     MaterialTheme.colorScheme.primary
                                                 } else {
                                                     MaterialTheme.colorScheme.onSurfaceVariant
                                                 }
                                             )
+                                            if (showLabels) {
+                                                Text(
+                                                    text = stringResource(destination.label),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    maxLines = 1,
+                                                    color = if (isSelected) {
+                                                        MaterialTheme.colorScheme.primary
+                                                    } else {
+                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
                                 }

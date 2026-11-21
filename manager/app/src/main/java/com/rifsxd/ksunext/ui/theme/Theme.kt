@@ -187,12 +187,7 @@ fun KernelSUTheme(
         customAccentArgb = customAccentArgb
     )
 
-    val fontFamily = when (fontStyleKey) {
-        "monospace" -> FontFamily.Monospace
-        "serif" -> FontFamily.Serif
-        "sans" -> FontFamily.SansSerif
-        else -> FontFamily.Default
-    }
+    val fontFamily = AppFontPreset.fromKey(fontStyleKey).fontFamily
 
     val customTypography = Typography.copy(
         displayLarge = Typography.displayLarge.copy(fontFamily = fontFamily),

@@ -99,6 +99,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Spoof Package ID
+        if: matrix.spoofed == true
+        run: |
+          chmod +x spoof
+          ./spoof
+
       - name: Extract libksud.so from Upstream KernelSU-Next APK
         env:
           APK_URL: ${{ needs.check-upstream.outputs.apk_url }}
@@ -116,39 +122,14 @@ jobs:
           fi
           rm -rf upstream_ksun.apk upstream_extracted
 
-      - name: Spoof Package ID
-        if: matrix.spoofed == true
+      - name: Setup Keystore (Use Permanent GombokSU Keystore 0x3e6)
         run: |
-          chmod +x spoof
-          ./spoof
-
-      - name: Setup Keystore (Generate Release Signing Key if not in Secrets)
-        run: |
-          if [ -n "${{ secrets.KEYSTORE }}" ]; then
-            {
-              echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}"
-              echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}"
-              echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}"
-              echo "KEYSTORE_FILE=key.jks"
-            } >> gradle.properties
-            echo "${{ secrets.KEYSTORE }}" | base64 -d > key.jks
-          else
-            keytool -genkeypair -v \
-              -keystore app/key.jks \
-              -alias gomboksu \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass gomboksu123 \
-              -keypass gomboksu123 \
-              -dname "CN=GombokSU Enhanced, OU=Root, O=GombokSU, L=Budapest, S=Pest, C=HU"
-            {
-              echo "KEYSTORE_PASSWORD=gomboksu123"
-              echo "KEY_ALIAS=gomboksu"
-              echo "KEY_PASSWORD=gomboksu123"
-              echo "KEYSTORE_FILE=key.jks"
-            } >> gradle.properties
-          fi
+          {
+            echo "KEYSTORE_PASSWORD=gomboksu123"
+            echo "KEY_ALIAS=gomboksu"
+            echo "KEY_PASSWORD=gomboksu123"
+            echo "KEYSTORE_FILE=gomboksu.jks"
+          } >> gradle.properties
 
       - name: Setup Java 21
         uses: actions/setup-java@v4
@@ -199,6 +180,18 @@ jobs:
               curl -fsSL "$asset_url" -o "release_output/$fname"
             fi
           done
+
+          # Patch manager certificate hash in all standalone *_kernelsu.ko assets to GombokSU Enhanced's 0x3e6 cert hash
+          python3 -c '
+          import glob
+          old = b"79e590113c4c4c0c222978e413a5faa801666957b1212a328e46c00c69821bf7"
+          new = b"4d13528936af67b8cbddc84f1d53dbf5f179ec8546301facec38c2f75718bbfd"
+          for p in glob.glob("release_output/*_kernelsu.ko"):
+              data = open(p, "rb").read()
+              if old in data:
+                  open(p, "wb").write(data.replace(old, new))
+                  print("Patched manager cert hash in", p)
+          '
           ls -lh release_output/
 
       - name: Create GitHub Release

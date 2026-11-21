@@ -6,24 +6,24 @@ word2=$(tr -dc 'a-z' </dev/urandom | head -c6)
 word3=$(tr -dc 'a-z' </dev/urandom | head -c6)
 
 echo "Generated words:"
-echo "com     -> $word1"
-echo "rifsxd  -> $word2"
-echo "ksunext -> $word3"
+echo "mci      -> $word1"
+echo "github   -> $word2"
+echo "gomboksu -> $word3"
 echo ""
 
 # Export variables for use in find -exec
 export word1 word2 word3
 
-# Rename directories
-find . -depth -type d -name 'com' -execdir mv {} "$word1" \;
-find . -depth -type d -name 'rifsxd' -execdir mv {} "$word2" \;
-find . -depth -type d -name 'ksunext' -execdir mv {} "$word3" \;
+# Rename source directories only inside java and aidl
+find ./app/src/main/java ./app/src/main/aidl -depth -type d -name 'gomboksu' -execdir mv {} "$word3" \;
+find ./app/src/main/java ./app/src/main/aidl -depth -type d -name 'github' -execdir mv {} "$word2" \;
+find ./app/src/main/java ./app/src/main/aidl -depth -type d -name 'mci' -execdir mv {} "$word1" \;
 
-# Replace inside files
-find . -type f -exec sed -i \
-    -e "s/com\.rifsxd\.ksunext/$word1.$word2.$word3/g" \
-    -e "s/com\/rifsxd\/ksunext/$word1\/$word2\/$word3/g" \
-    -e "s/com_rifsxd_ksunext/${word1}_${word2}_${word3}/g" {} +
+# Replace inside text source/config files ONLY (never binary .so, .jks, .png, .ttf)
+find . -type f \( -name "*.kt" -o -name "*.java" -o -name "*.xml" -o -name "*.aidl" -o -name "*.cc" -o -name "*.h" -o -name "*.kts" -o -name "*.pro" \) -exec sed -i \
+    -e "s/mci\.github\.gomboksu/$word1.$word2.$word3/g" \
+    -e "s/mci\/github\/gomboksu/$word1\/$word2\/$word3/g" \
+    -e "s/mci_github_gomboksu/${word1}_${word2}_${word3}/g" {} +
 
 # Append '-spoofed' to managerVersionName in build.gradle.kts
 if [ -f "./build.gradle.kts" ]; then

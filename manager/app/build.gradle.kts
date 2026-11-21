@@ -23,7 +23,7 @@ apksign {
 }
 
 android {
-    namespace = "com.rifsxd.ksunext"
+    namespace = "mci.github.gomboksu"
 
     buildTypes {
         release {
@@ -47,6 +47,7 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            keepDebugSymbols += "**/libksud.so"
         }
         resources {
             // https://stackoverflow.com/a/58956288

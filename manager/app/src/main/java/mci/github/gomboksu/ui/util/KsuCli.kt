@@ -355,7 +355,10 @@ private const val GOMBOKSU_MANAGER_CERT_HASH =
     "4d13528936af67b8cbddc84f1d53dbf5f179ec8546301facec38c2f75718bbfd"
 
 private fun patchLkmManagerSignature(koFile: File, onStdout: (String) -> Unit) {
-    if (!koFile.exists() || !koFile.isFile) return
+    if (!koFile.exists() || !koFile.isFile) {
+        onStdout("- Warning: LKM file missing before signature patch")
+        return
+    }
     runCatching {
         val bytes = koFile.readBytes()
         val needle = UPSTREAM_MANAGER_CERT_HASH.toByteArray(Charsets.US_ASCII)
@@ -383,24 +386,48 @@ private fun patchLkmManagerSignature(koFile: File, onStdout: (String) -> Unit) {
         if (patchedCount > 0) {
             koFile.writeBytes(bytes)
             onStdout("- Patched LKM manager signature for GombokSU Enhanced")
+        } else {
+            val alreadyPatched = String(bytes, Charsets.ISO_8859_1).contains(GOMBOKSU_MANAGER_CERT_HASH)
+            if (alreadyPatched) {
+                onStdout("- LKM already has GombokSU Enhanced signature")
+            } else {
+                onStdout("- Warning: upstream manager signature not found in LKM")
+            }
         }
     }.onFailure { e ->
         Log.e(TAG, "Failed to patch LKM manager signature", e)
+        onStdout("- Warning: failed to patch LKM signature: ${e.message}")
     }
 }
 
-private fun extractEmbeddedLkm(kmi: String, destFile: File): Boolean {
+private fun extractEmbeddedLkm(kmi: String, destFile: File, onStdout: (String) -> Unit): Boolean {
     if (destFile.exists()) destFile.delete()
-    val extractCmd = "${getKsuDaemonPath()} debug extract-binary ${kmi}_kernelsu.ko ${destFile.absolutePath}"
+    val ksudPath = getKsuDaemonPath()
     val ok = runCatching {
-        ShellUtils.fastCmdResult(extractCmd) || nonRootShell(extractCmd)
+        val process = ProcessBuilder(
+            ksudPath, "debug", "extract-binary", "${kmi}_kernelsu.ko", destFile.absolutePath
+        ).redirectErrorStream(true).start()
+        val out = process.inputStream.bufferedReader().readText().trim()
+        val code = process.waitFor()
+        if (code != 0 && out.isNotBlank()) {
+            Log.w(TAG, "extract-binary failed ($code): $out")
+            onStdout("- Warning: extract-binary ($code): $out")
+        }
+        code == 0
+    }.onFailure { e ->
+        Log.e(TAG, "extract-binary exception", e)
+        onStdout("- Warning: extract-binary error: ${e.message}")
     }.getOrDefault(false)
-    return ok && destFile.exists() && destFile.length() > 0
+    return ok && destFile.exists() && destFile.length() > 0L
 }
 
 private fun resolveKmiForPatch(bootFile: File?): String {
     val current = runCatching {
-        ShellUtils.fastCmd("${getKsuDaemonPath()} boot-info current-kmi").trim()
+        val process = ProcessBuilder(getKsuDaemonPath(), "boot-info", "current-kmi")
+            .redirectErrorStream(false)
+            .start()
+        val out = process.inputStream.bufferedReader().readText().trim()
+        if (process.waitFor() == 0) out else ""
     }.getOrDefault("")
     if (current.isNotBlank()) return current
 
@@ -487,7 +514,7 @@ fun installBoot(
             val kmi = lkm.value.trim()
             cmd += " --kmi $kmi"
             val extractedFile = File(ksuApp.cacheDir, "kernelsu-tmp-lkm.ko")
-            if (extractEmbeddedLkm(kmi, extractedFile)) {
+            if (extractEmbeddedLkm(kmi, extractedFile, onStdout)) {
                 patchLkmManagerSignature(extractedFile, onStdout)
                 lkmFile = extractedFile
                 cmd += " -m ${extractedFile.absolutePath}"
@@ -498,7 +525,7 @@ fun installBoot(
             val detectedKmi = resolveKmiForPatch(bootFile)
             if (detectedKmi.isNotBlank()) {
                 val extractedFile = File(ksuApp.cacheDir, "kernelsu-tmp-lkm.ko")
-                if (extractEmbeddedLkm(detectedKmi, extractedFile)) {
+                if (extractEmbeddedLkm(detectedKmi, extractedFile, onStdout)) {
                     patchLkmManagerSignature(extractedFile, onStdout)
                     lkmFile = extractedFile
                     cmd += " --kmi $detectedKmi -m ${extractedFile.absolutePath}"

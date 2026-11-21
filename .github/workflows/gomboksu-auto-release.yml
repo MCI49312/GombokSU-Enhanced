@@ -146,6 +146,43 @@ jobs:
           OVERRIDE_VERSION_CODE: ${{ needs.check-upstream.outputs.version_code }}
         run: ./gradlew assembleRelease --no-daemon
 
+      - name: Verify APK v2 Signature Matches 0x3e6 GombokSU Certificate
+        run: |
+          python3 -c '
+          import glob, struct, hashlib, sys
+          apks = glob.glob("app/build/outputs/apk/release/*.apk")
+          assert apks, "No APK found"
+          for apk in apks:
+              data = open(apk, "rb").read()
+              eocd = data.rfind(b"\x50\x4b\x05\x06")
+              cd_size, cd_off = struct.unpack_from("<II", data, eocd + 12)
+              assert data[cd_off - 16 : cd_off] == b"APK Sig Block 42", f"Missing sig block in {apk}"
+              block_size = struct.unpack_from("<Q", data, cd_off - 24)[0]
+              pos = cd_off - block_size
+              pairs_end = cd_off - 24
+              found = False
+              while pos < pairs_end:
+                  plen = struct.unpack_from("<Q", data, pos)[0]
+                  pos += 8
+                  pid = struct.unpack_from("<I", data, pos)[0]
+                  pair_end = pos + plen
+                  pos += 4
+                  if pid == 0x7109871a:
+                      pos += 12
+                      dlen = struct.unpack_from("<I", data, pos)[0]
+                      pos += 4 + dlen
+                      _, clen = struct.unpack_from("<II", data, pos)
+                      pos += 8
+                      cert = data[pos : pos + clen]
+                      digest = hashlib.sha256(cert).hexdigest()
+                      print(f"{apk}: cert_size=0x{clen:x} ({clen}), sha256={digest}")
+                      assert clen == 0x3e6, f"Expected cert size 0x3e6, got 0x{clen:x}"
+                      assert digest == "4d13528936af67b8cbddc84f1d53dbf5f179ec8546301facec38c2f75718bbfd", f"Unexpected sha256: {digest}"
+                      found = True
+                  pos = pair_end
+              assert found, f"No v2 signature block found in {apk}"
+          '
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:

@@ -68,6 +68,7 @@ import com.dergoogler.mmrl.ui.component.text.TextRow
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.NavGraphs
+import com.ramcosta.composedestinations.generated.destinations.ContributorsScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.InstallScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ModuleScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingScreenDestination
@@ -297,7 +298,11 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 IssueReportCard()
             }
             if (showContributors) {
-                ContributorsCard()
+                ContributorsCard(
+                    onClick = {
+                        navigator.navigate(ContributorsScreenDestination)
+                    }
+                )
             }
             Spacer(Modifier)
         }
@@ -1040,11 +1045,70 @@ private data class HomeInfoSnapshot(
     val suSFSVariant: String? = null,
     val zygiskEnabled: Boolean = false,
     val zygiskInfo: ModuleViewModel.ModuleInfo? = null,
+    val deviceModel: String = "",
+    val fingerprint: String = Build.FINGERPRINT,
     val unameRelease: String = "",
     val unameMachine: String = "",
     val seccompStatus: String = "Unavailable",
     val selinuxStatusRes: Int = R.string.selinux_status_unknown,
 )
+
+private fun getSystemProperty(key: String): String {
+    return runCatching {
+        val spClass = Class.forName("android.os.SystemProperties")
+        val getMethod = spClass.getMethod("get", String::class.java, String::class.java)
+        (getMethod.invoke(null, key, "") as? String)?.trim().orEmpty()
+    }.getOrDefault("")
+}
+
+private fun getDeviceModelName(context: Context): String {
+    val manufacturerRaw = Build.MANUFACTURER.orEmpty().trim()
+    val manufacturer = manufacturerRaw.replaceFirstChar {
+        if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString()
+    }
+    val model = Build.MODEL.orEmpty().trim()
+
+    val marketName = listOf(
+        "ro.product.marketname",
+        "ro.product.odm.marketname",
+        "ro.product.vendor.marketname",
+        "ro.config.marketing_name",
+        "ro.vendor.oplus.market.name",
+        "ro.oppo.market.name"
+    ).firstNotNullOfOrNull { prop ->
+        getSystemProperty(prop).takeIf { it.isNotBlank() }
+    } ?: run {
+        val settingsName = runCatching {
+            android.provider.Settings.Global.getString(context.contentResolver, "device_name")?.trim()
+        }.getOrNull().orEmpty()
+        if (manufacturerRaw.equals("samsung", ignoreCase = true) && settingsName.contains("Galaxy", ignoreCase = true)) {
+            settingsName
+        } else {
+            ""
+        }
+    }
+
+    val baseName = when {
+        marketName.isNotBlank() -> {
+            if (manufacturer.isNotBlank() && !marketName.startsWith(manufacturer, ignoreCase = true)) {
+                "$manufacturer $marketName"
+            } else {
+                marketName
+            }
+        }
+        manufacturer.isNotBlank() && model.isNotBlank() -> {
+            if (model.startsWith(manufacturer, ignoreCase = true)) model else "$manufacturer $model"
+        }
+        model.isNotBlank() -> model
+        else -> manufacturer.ifBlank { "Unknown" }
+    }
+
+    return if (model.isNotBlank() && !baseName.contains(model, ignoreCase = true)) {
+        "$baseName ($model)"
+    } else {
+        baseName
+    }
+}
 
 private fun buildHomeInfoSnapshot(
     context: Context,
@@ -1064,6 +1128,8 @@ private fun buildHomeInfoSnapshot(
     val suSFSVariant = if (suSFS == "Supported" && ksuVersion != null) getSuSFSVariant() else null
     val zygiskEnabled = if (ksuVersion == null) false else Natives.isZygiskEnabled()
     val zygiskInfo = if (!zygiskEnabled) null else moduleList.firstOrNull { it.isZygisk && it.enabled }
+    val deviceModel = getDeviceModelName(context)
+    val fingerprint = Build.FINGERPRINT.orEmpty().ifBlank { "Unknown" }
     val uname = kotlin.runCatching { Os.uname() }.getOrNull()
     val statusInt = kotlin.runCatching { Os.prctl(21, 0, 0, 0, 0) }.getOrDefault(-1)
     val seccompStatus = when (statusInt) {
@@ -1086,6 +1152,8 @@ private fun buildHomeInfoSnapshot(
         suSFSVariant = suSFSVariant,
         zygiskEnabled = zygiskEnabled,
         zygiskInfo = zygiskInfo,
+        deviceModel = deviceModel,
+        fingerprint = fingerprint,
         unameRelease = uname?.release.orEmpty(),
         unameMachine = uname?.machine.orEmpty(),
         seccompStatus = seccompStatus,
@@ -1219,6 +1287,20 @@ private fun InfoCard(autoExpand: Boolean = false) {
                     Column {
                         Spacer(Modifier.height(16.dp))
                         InfoCardItem(
+                            label = "Device Model",
+                            content = homeInfo.deviceModel,
+                            icon = Icons.Filled.PhoneAndroid,
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+                        InfoCardItem(
+                            label = "Fingerprint",
+                            content = homeInfo.fingerprint,
+                            icon = Icons.Filled.Fingerprint,
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+                        InfoCardItem(
                             label = stringResource(R.string.home_kernel),
                             content = "${homeInfo.unameRelease} (${homeInfo.unameMachine})",
                             icon = painterResource(R.drawable.ic_linux),
@@ -1282,182 +1364,41 @@ private fun InfoCard(autoExpand: Boolean = false) {
     }
 }
 
-data class Contributor(
-    val login: String,
-    val name: String? = null,
-    val githubUrl: String,
-    val role: String,
-    val donationUrl: String
-)
-
 @Composable
-fun ContributorsCard() {
-    val uriHandler = LocalUriHandler.current
-
-    val contributors = listOf(
-        Contributor(
-            login = "MCI49312",
-            githubUrl = "https://github.com/MCI49312",
-            role = "GombokSU developer",
-            donationUrl = "https://github.com/MCI49312/GombokSU-Enhanced"
-        ),
-        Contributor(
-            login = "rifsxd",
-            name = "Rifat Azad",
-            githubUrl = "https://github.com/rifsxd",
-            role = stringResource(R.string.contributor_lead_developer),
-            donationUrl = "https://github.com/KernelSU-Next/KernelSU-Next/tree/dev?tab=readme-ov-file#-donations"
-        ),
-        Contributor(
-            login = "tiann",
-            name = "Weishu",
-            githubUrl = "https://github.com/tiann",
-            role = stringResource(R.string.contributor_kernel_author),
-            donationUrl = "https://www.patreon.com/weishu"
-        ),
-        Contributor(
-            login = "fatalcoder524",
-            githubUrl = "https://github.com/fatalcoder524",
-            role = stringResource(R.string.contributor_frontend_maintainer),
-            donationUrl = "https://github.com/sponsors/fatalcoder524"
-        ),
-        Contributor(
-            login = "pershoot",
-            githubUrl = "https://github.com/pershoot",
-            role = stringResource(R.string.contributor_backend_maintainer),
-            donationUrl = "https://github.com/sponsors/pershoot"
-        ),
-        Contributor(
-            login = "maxsteeel",
-            name = "Max",
-            githubUrl = "https://github.com/maxsteeel",
-            role = stringResource(R.string.contributor_legacy_maintainer),
-            donationUrl = "https://github.com/sponsors/maxsteeel"
-        )
-    )
-
-    Card {
-        Column(
+fun ContributorsCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = stringResource(R.string.contributors),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+            Icon(
+                imageVector = Icons.Filled.Groups,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 20.dp)
             )
-
-            contributors.forEach { contributor ->
-                ContributorRow(
-                    contributor = contributor,
-                    onProfileClick = { uriHandler.openUri(contributor.githubUrl) },
-                    onDonateClick = { uriHandler.openUri(contributor.donationUrl) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ContributorRow(
-    contributor: Contributor,
-    onProfileClick: () -> Unit,
-    onDonateClick: () -> Unit
-) {
-    var imageLoadFailed by remember { mutableStateOf(false) }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Avatar + name/role
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(8.dp))
-                .clickable { onProfileClick() }
-                .padding(vertical = 4.dp, horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .border(
-                        width = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!imageLoadFailed) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data("https://avatars.githubusercontent.com/${contributor.login}?s=80")
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = contributor.login,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        onError = { imageLoadFailed = true }
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.secondaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-            }
-
-            // Name + role
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = contributor.name?.takeIf { it.isNotBlank() }
-                        ?.let { "${contributor.login} ($it)" }
-                        ?: contributor.login,
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = stringResource(R.string.contributors),
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = contributor.role,
+                    text = "View project authors and contributors",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
-        }
-
-        OutlinedButton(
-            onClick = onDonateClick,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-            modifier = Modifier.height(30.dp),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
             Icon(
-                imageVector = Icons.Filled.Favorite,
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                modifier = Modifier.size(13.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.width(5.dp))
-            Text(
-                text = stringResource(R.string.support),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

@@ -152,7 +152,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
             downloadResult.onSuccess { apkFile ->
                 downloadProgress = 1f
                 statusMessage = context.getString(R.string.updater_installing, apkFile.name)
-                val installResult = installDownloadedApk(context, apkFile, preferRootInstall = true)
+                val installResult = installDownloadedApk(context, apkFile)
                 installResult.onSuccess { msg ->
                     statusMessage = msg
                     Toast.makeText(context, msg, Toast.LENGTH_LONG).show()

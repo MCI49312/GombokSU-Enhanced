@@ -96,44 +96,29 @@ object ApkSpoofer {
     ): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val oldPackageId = context.packageName
-            if (rootAvailable()) {
+            if (rootAvailable() && oldPackageId != newPackageId) {
                 onStatus("Installing $newPackageId via root…")
                 val tmpPath = "/data/local/tmp/${signedApk.name.replace("'", "")}"
-                val samePkg = oldPackageId == newPackageId
-                if (samePkg) {
-                    val detached = """
-                        cp '${signedApk.absolutePath}' '$tmpPath' && \
-                        chmod 644 '$tmpPath' && \
-                        nohup sh -c "pm install -r -d '$tmpPath' && rm -f '$tmpPath' && sleep 1 && monkey -p '$newPackageId' -c android.intent.category.LAUNCHER 1" >/dev/null 2>&1 &
-                    """.trimIndent().replace("\n", " ")
-                    val ok = withNewRootShell(globalMnt = true) {
-                        newJob().add(detached).exec().isSuccess
-                    }
-                    if (ok) {
-                        return@runCatching "Installing via root… app will relaunch shortly."
+                val installCmd = "cp '${signedApk.absolutePath}' '$tmpPath' && chmod 644 '$tmpPath' && pm install -r -d '$tmpPath'; rc=\$?; rm -f '$tmpPath'; exit \$rc"
+                val res = withNewRootShell(globalMnt = true) {
+                    newJob().add(installCmd).exec()
+                }
+                if (res.isSuccess) {
+                    if (uninstallOld) {
+                        onStatus("Launching $newPackageId and removing old package…")
+                        val switchCmd = "nohup sh -c \"monkey -p '$newPackageId' -c android.intent.category.LAUNCHER 1; sleep 2; pm uninstall '$oldPackageId'\" >/dev/null 2>&1 &"
+                        withNewRootShell(globalMnt = true) {
+                            newJob().add(switchCmd).exec()
+                        }
+                        return@runCatching "Installed $newPackageId and scheduled uninstall of $oldPackageId."
+                    } else {
+                        withNewRootShell(globalMnt = true) {
+                            newJob().add("monkey -p '$newPackageId' -c android.intent.category.LAUNCHER 1").exec()
+                        }
+                        return@runCatching "Successfully installed $newPackageId!"
                     }
                 } else {
-                    val installCmd = "cp '${signedApk.absolutePath}' '$tmpPath' && chmod 644 '$tmpPath' && pm install -r -d '$tmpPath'; rc=\$?; rm -f '$tmpPath'; exit \$rc"
-                    val res = withNewRootShell(globalMnt = true) {
-                        newJob().add(installCmd).exec()
-                    }
-                    if (res.isSuccess) {
-                        if (uninstallOld) {
-                            onStatus("Launching $newPackageId and removing old package…")
-                            val switchCmd = "nohup sh -c \"monkey -p '$newPackageId' -c android.intent.category.LAUNCHER 1; sleep 2; pm uninstall '$oldPackageId'\" >/dev/null 2>&1 &"
-                            withNewRootShell(globalMnt = true) {
-                                newJob().add(switchCmd).exec()
-                            }
-                            return@runCatching "Installed $newPackageId and scheduled uninstall of $oldPackageId."
-                        } else {
-                            withNewRootShell(globalMnt = true) {
-                                newJob().add("monkey -p '$newPackageId' -c android.intent.category.LAUNCHER 1").exec()
-                            }
-                            return@runCatching "Successfully installed $newPackageId!"
-                        }
-                    } else {
-                        Log.w(TAG, "Root pm install failed: ${res.err.joinToString("\n")}")
-                    }
+                    Log.w(TAG, "Root pm install failed: ${res.err.joinToString("\n")}")
                 }
             }
 

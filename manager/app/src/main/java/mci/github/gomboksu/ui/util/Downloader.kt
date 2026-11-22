@@ -237,40 +237,10 @@ suspend fun downloadUpdateApk(
 
 suspend fun installDownloadedApk(
     context: Context,
-    apkFile: File,
-    preferRootInstall: Boolean = true
+    apkFile: File
 ): Result<String> = withContext(Dispatchers.IO) {
     runCatching {
         require(apkFile.exists() && apkFile.length() > 1024L) { "APK file not found" }
-
-        if (preferRootInstall && rootAvailable()) {
-            val tmpPath = "/data/local/tmp/${apkFile.name.replace("'", "")}"
-            val pkg = context.packageName
-            val isSamePackage = !isCurrentAppSpoofed()
-            if (isSamePackage) {
-                // Detached root install so Android replacing the running package still relaunches cleanly
-                val detachedCmd = """
-                    cp '${apkFile.absolutePath}' '$tmpPath' && \
-                    chmod 644 '$tmpPath' && \
-                    nohup sh -c "pm install -r -d '$tmpPath' && rm -f '$tmpPath' && sleep 1 && monkey -p '$pkg' -c android.intent.category.LAUNCHER 1" >/dev/null 2>&1 &
-                """.trimIndent().replace("\n", " ")
-                val launched = withNewRootShell(globalMnt = true) {
-                    newJob().add(detachedCmd).exec().isSuccess
-                }
-                if (launched) {
-                    return@runCatching "Installing via root… the app will relaunch automatically."
-                }
-            } else {
-                // Spoofed build has a new random package ID, so pm install won't kill this process
-                val cmd = "cp '${apkFile.absolutePath}' '$tmpPath' && chmod 644 '$tmpPath' && pm install -r -d '$tmpPath'; rm -f '$tmpPath'"
-                val res = withNewRootShell(globalMnt = true) {
-                    newJob().add(cmd).exec()
-                }
-                if (res.isSuccess) {
-                    return@runCatching "Installed new Spoofed build via root."
-                }
-            }
-        }
 
         // Standard Android PackageInstaller prompt via FileProvider
         withContext(Dispatchers.Main) {

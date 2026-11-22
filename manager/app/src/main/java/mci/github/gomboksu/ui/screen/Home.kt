@@ -517,7 +517,7 @@ fun UpdateCard(onOpenUpdater: () -> Unit = {}) {
             }
             dlResult.onSuccess { apkFile ->
                 autoUpdateText = "Installing ${newVersion.versionTag}…"
-                val installResult = installDownloadedApk(context, apkFile, preferRootInstall = true)
+                val installResult = installDownloadedApk(context, apkFile)
                 autoUpdateText = installResult.getOrNull() ?: "Install failed: ${installResult.exceptionOrNull()?.message}"
             }.onFailure { err ->
                 autoUpdateText = "Auto-update failed: ${err.message}"

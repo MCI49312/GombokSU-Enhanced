@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -37,6 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mci.github.gomboksu.BuildConfig
+import mci.github.gomboksu.R
 import mci.github.gomboksu.ui.LocalNavBarEnabled
 import mci.github.gomboksu.ui.LocalScrollState
 import mci.github.gomboksu.ui.MainActivity
@@ -81,7 +83,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
     }
 
     val isSpoofed = remember { isCurrentAppSpoofed() }
-    val buildTypeLabel = if (isSpoofed) "Spoofed" else "Normal"
+    val buildTypeLabel = stringResource(if (isSpoofed) R.string.updater_build_spoofed else R.string.updater_build_normal)
     val (currentVersionName, currentVersionCode) = remember(context) { getManagerVersion(context) }
 
     var autoUpdateEnabled by rememberSaveable {
@@ -112,7 +114,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
             }
             latestInfo = info
             if (info.downloadUrl.isBlank()) {
-                checkError = "Could not find a matching $buildTypeLabel release APK on GitHub."
+                checkError = context.getString(R.string.updater_no_matching_apk, buildTypeLabel)
             }
             isChecking = false
         }
@@ -127,7 +129,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
         scope.launch {
             isDownloading = true
             downloadProgress = 0f
-            statusMessage = "$actionLabel: downloading ${latestInfo.fileName}…"
+            statusMessage = context.getString(R.string.updater_downloading_start, actionLabel, latestInfo.fileName)
 
             val downloadResult = downloadUpdateApk(context, latestInfo) { progress, downloaded, total ->
                 scope.launch(Dispatchers.Main) {
@@ -135,33 +137,38 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                     val dlMb = downloaded / (1024f * 1024f)
                     val totalMb = total / (1024f * 1024f)
                     statusMessage = if (total > 0L) {
-                        String.format(
-                            Locale.US,
-                            "Downloading %s (%.1f / %.1f MB)…",
+                        context.getString(
+                            R.string.updater_downloading_progress,
                             latestInfo.fileName,
                             dlMb,
                             totalMb
                         )
                     } else {
-                        String.format(Locale.US, "Downloading %s (%.1f MB)…", latestInfo.fileName, dlMb)
+                        context.getString(R.string.updater_downloading_size, latestInfo.fileName, dlMb)
                     }
                 }
             }
 
             downloadResult.onSuccess { apkFile ->
                 downloadProgress = 1f
-                statusMessage = "Installing ${apkFile.name}…"
+                statusMessage = context.getString(R.string.updater_installing, apkFile.name)
                 val installResult = installDownloadedApk(context, apkFile, preferRootInstall = true)
                 installResult.onSuccess { msg ->
                     statusMessage = msg
                     Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                 }.onFailure { err ->
-                    val errMsg = "Install failed: ${err.message ?: "unknown error"}"
+                    val errMsg = context.getString(
+                        R.string.updater_install_failed,
+                        err.message ?: context.getString(R.string.unknown_error)
+                    )
                     statusMessage = errMsg
                     Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
                 }
             }.onFailure { err ->
-                val errMsg = "Download failed: ${err.message ?: "unknown error"}"
+                val errMsg = context.getString(
+                    R.string.updater_download_failed,
+                    err.message ?: context.getString(R.string.unknown_error)
+                )
                 statusMessage = errMsg
                 Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
             }
@@ -175,7 +182,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
             TopAppBar(
                 title = {
                     Text(
-                        text = "App Updater",
+                        text = stringResource(R.string.updater_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
@@ -197,7 +204,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
-                            contentDescription = "Check for updates"
+                            contentDescription = stringResource(R.string.updater_check_action)
                         )
                     }
                 },
@@ -272,10 +279,10 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = when {
-                                    isChecking -> "Checking for updates…"
-                                    updateAvailable -> "New Update Available: ${latestInfo.versionTag}"
-                                    checkError != null -> "Update Check Failed"
-                                    else -> "GombokSU Enhanced is Up to Date"
+                                    isChecking -> stringResource(R.string.updater_checking)
+                                    updateAvailable -> stringResource(R.string.updater_new_available, latestInfo.versionTag)
+                                    checkError != null -> stringResource(R.string.updater_check_failed)
+                                    else -> stringResource(R.string.updater_up_to_date)
                                 },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
@@ -283,10 +290,10 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = when {
-                                    isChecking -> "Fetching latest $buildTypeLabel release from GitHub…"
-                                    updateAvailable -> "Matched $buildTypeLabel build (${latestInfo.fileName}) is ready to install."
+                                    isChecking -> stringResource(R.string.updater_fetching, buildTypeLabel)
+                                    updateAvailable -> stringResource(R.string.updater_ready_to_install, buildTypeLabel, latestInfo.fileName)
                                     checkError != null -> checkError!!
-                                    else -> "Running latest $buildTypeLabel release ($currentVersionName)."
+                                    else -> stringResource(R.string.updater_running_latest, buildTypeLabel, currentVersionName)
                                 },
                                 style = MaterialTheme.typography.bodySmall
                             )
@@ -331,7 +338,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Text(
-                            text = "Version Details",
+                            text = stringResource(R.string.updater_version_details),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary
@@ -339,32 +346,32 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
 
                         UpdaterDetailRow(
                             icon = Icons.Filled.Info,
-                            label = "Installed Manager",
+                            label = stringResource(R.string.updater_installed_manager),
                             value = "$currentVersionName ($currentVersionCode)"
                         )
 
                         UpdaterDetailRow(
                             icon = if (isSpoofed) Icons.Filled.VisibilityOff else Icons.Filled.Verified,
-                            label = "Detected Build Type",
+                            label = stringResource(R.string.updater_detected_build_type),
                             value = "$buildTypeLabel (${context.packageName})"
                         )
 
                         UpdaterDetailRow(
                             icon = Icons.Filled.NewReleases,
-                            label = "Latest GitHub Release",
+                            label = stringResource(R.string.updater_latest_github_release),
                             value = if (latestInfo.versionCode > 0) {
                                 "${latestInfo.versionTag} (${latestInfo.versionCode})"
                             } else if (isChecking) {
-                                "Checking…"
+                                stringResource(R.string.updater_checking_short)
                             } else {
-                                "Unavailable"
+                                stringResource(R.string.unavailable)
                             }
                         )
 
                         if (latestInfo.fileName.isNotBlank()) {
                             UpdaterDetailRow(
                                 icon = Icons.Filled.Android,
-                                label = "Matched Release File",
+                                label = stringResource(R.string.updater_matched_release_file),
                                 value = latestInfo.fileName
                             )
                         }
@@ -376,8 +383,8 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                     Column(modifier = Modifier.padding(vertical = 8.dp)) {
                         SwitchItem(
                             icon = Icons.Filled.AutoMode,
-                            title = "Automatic App Update",
-                            summary = "Automatically download and install when a strictly newer $buildTypeLabel version is released",
+                            title = stringResource(R.string.updater_auto_update),
+                            summary = stringResource(R.string.updater_auto_update_summary, buildTypeLabel),
                             checked = autoUpdateEnabled,
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                         ) { checked ->
@@ -397,7 +404,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Text(
-                                text = "Release Notes (${latestInfo.versionTag})",
+                                text = stringResource(R.string.updater_release_notes, latestInfo.versionTag),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.primary
@@ -409,6 +416,8 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
             }
 
             // Sleek floating bottom action bar — adapts cleanly to Floating Pill, Classic Docked, Compact Pill, or Hidden Nav Bar
+            val reinstallingLabel = stringResource(R.string.updater_reinstalling)
+            val updatingLabel = stringResource(R.string.updater_updating)
             Surface(
                 shape = RoundedCornerShape(18.dp),
                 tonalElevation = 4.dp,
@@ -427,7 +436,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FilledTonalButton(
-                        onClick = { startInstallFlow("Reinstalling") },
+                        onClick = { startInstallFlow(reinstallingLabel) },
                         enabled = hasValidAsset && !isChecking && !isDownloading,
                         modifier = Modifier
                             .weight(1f)
@@ -442,7 +451,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = "Reinstall App",
+                            text = stringResource(R.string.updater_reinstall_app),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -451,7 +460,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                     }
 
                     Button(
-                        onClick = { startInstallFlow("Updating") },
+                        onClick = { startInstallFlow(updatingLabel) },
                         enabled = updateAvailable && hasValidAsset && !isChecking && !isDownloading,
                         modifier = Modifier
                             .weight(1f)
@@ -466,7 +475,7 @@ fun UpdaterScreen(navigator: DestinationsNavigator) {
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = "Update to New",
+                            text = stringResource(R.string.updater_update_to_new),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,

@@ -591,7 +591,7 @@ fun UpdateCard(onOpenUpdater: () -> Unit = {}) {
 private fun UpdaterLinkCard(onClick: () -> Unit) {
     val context = LocalContext.current
     val (currentVersionName, _) = remember(context) { getManagerVersion(context) }
-    val buildTypeLabel = if (isCurrentAppSpoofed()) "Spoofed" else "Normal"
+    val buildTypeLabel = stringResource(if (isCurrentAppSpoofed()) R.string.updater_build_spoofed else R.string.updater_build_normal)
 
     Card(
         modifier = Modifier
@@ -612,12 +612,12 @@ private fun UpdaterLinkCard(onClick: () -> Unit) {
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "App Updater",
+                    text = stringResource(R.string.updater_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "$currentVersionName ($buildTypeLabel) • Check for updates or reinstall",
+                    text = stringResource(R.string.updater_home_summary, currentVersionName, buildTypeLabel),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
@@ -1303,14 +1303,14 @@ private fun InfoCard(autoExpand: Boolean = false) {
                     Column {
                         Spacer(Modifier.height(16.dp))
                         InfoCardItem(
-                            label = "Device Model",
+                            label = stringResource(R.string.home_device_model),
                             content = homeInfo.deviceModel,
                             icon = Icons.Filled.PhoneAndroid,
                         )
 
                         Spacer(Modifier.height(16.dp))
                         InfoCardItem(
-                            label = "Fingerprint",
+                            label = stringResource(R.string.home_fingerprint),
                             content = homeInfo.fingerprint,
                             icon = Icons.Filled.Fingerprint,
                         )
@@ -1406,7 +1406,7 @@ fun ContributorsCard(onClick: () -> Unit) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "View project authors and contributors",
+                    text = stringResource(R.string.home_contributors_summary),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)

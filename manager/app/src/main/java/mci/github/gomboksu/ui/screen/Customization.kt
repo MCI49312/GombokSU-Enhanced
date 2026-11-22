@@ -349,20 +349,19 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Animations",
+                            text = stringResource(R.string.animations_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = if (currentAnim.enabled) {
-                                String.format(
-                                    java.util.Locale.US,
-                                    "Bounce %.1fx • Speed %.1fx • Transitions & Physics",
+                                stringResource(
+                                    R.string.animations_card_enabled_summary,
                                     currentAnim.bounceMultiplier,
                                     currentAnim.speedMultiplier
                                 )
                             } else {
-                                "Disabled • Tap to configure bounce & motion effects"
+                                stringResource(R.string.animations_card_disabled_summary)
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -408,12 +407,12 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Custom Spoof",
+                                text = stringResource(R.string.custom_spoof_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Customize spoofed package ID & app name",
+                                text = stringResource(R.string.custom_spoof_customization_summary),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -470,7 +469,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                 SwitchItem(
                     icon = Icons.Filled.Wallpaper,
                     title = stringResource(R.string.settings_dynamic_color),
-                    summary = "Use Material You (Monet) tonal palettes with Device Accent or any custom accent",
+                    summary = stringResource(R.string.customization_monet_enhanced_summary),
                     checked = dynamicColor,
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                 ) { checked ->
@@ -675,7 +674,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "${AppFontPreset.entries.size} Fonts Available",
+                            text = stringResource(R.string.customization_fonts_available, AppFontPreset.entries.size),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -845,7 +844,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                                     }
                                     Spacer(Modifier.height(2.dp))
                                     Text(
-                                        text = "Normal",
+                                        text = stringResource(R.string.customization_icon_normal),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -874,7 +873,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                                     }
                                     Spacer(Modifier.height(2.dp))
                                     Text(
-                                        text = "Material",
+                                        text = stringResource(R.string.customization_icon_material),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.primary
                                     )
@@ -1060,8 +1059,8 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
 
                 SwitchItem(
                     icon = Icons.Filled.PhoneAndroid,
-                    title = "Show About Device on Home",
-                    summary = "Display the About Device info card on the Home screen",
+                    title = stringResource(R.string.home_show_about_device),
+                    summary = stringResource(R.string.home_show_about_device_summary),
                     checked = showAboutDevice,
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                 ) { checked ->
@@ -1267,21 +1266,21 @@ private fun CustomColorPickerDialog(
                 )
 
                 Column {
-                    Text("Red: ${red.roundToInt()}", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.customization_rgb_red, red.roundToInt()), style = MaterialTheme.typography.labelMedium)
                     Slider(
                         value = red,
                         onValueChange = { red = it },
                         valueRange = 0f..255f,
                         colors = SliderDefaults.colors(thumbColor = Color(0xFFEF4444), activeTrackColor = Color(0xFFEF4444))
                     )
-                    Text("Green: ${green.roundToInt()}", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.customization_rgb_green, green.roundToInt()), style = MaterialTheme.typography.labelMedium)
                     Slider(
                         value = green,
                         onValueChange = { green = it },
                         valueRange = 0f..255f,
                         colors = SliderDefaults.colors(thumbColor = Color(0xFF10B981), activeTrackColor = Color(0xFF10B981))
                     )
-                    Text("Blue: ${blue.roundToInt()}", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.customization_rgb_blue, blue.roundToInt()), style = MaterialTheme.typography.labelMedium)
                     Slider(
                         value = blue,
                         onValueChange = { blue = it },

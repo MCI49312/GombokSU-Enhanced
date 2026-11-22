@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.dropUnlessResumed
@@ -24,6 +25,7 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
+import mci.github.gomboksu.R
 import mci.github.gomboksu.ui.LocalNavBarEnabled
 import mci.github.gomboksu.ui.LocalScrollState
 import mci.github.gomboksu.ui.component.SwitchItem
@@ -76,7 +78,7 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Custom Spoof",
+                        text = stringResource(R.string.custom_spoof_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black,
                     )
@@ -135,14 +137,14 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Active Spoofed Identity",
+                            text = stringResource(R.string.custom_spoof_active_identity),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = "App Name: $currentAppName\nPackage ID: $currentPackageId",
+                            text = stringResource(R.string.custom_spoof_active_details, currentAppName, currentPackageId),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
                         )
@@ -159,7 +161,7 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "New Custom Identity",
+                        text = stringResource(R.string.custom_spoof_new_identity),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -168,16 +170,18 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
                     OutlinedTextField(
                         value = customAppName,
                         onValueChange = { customAppName = it.take(64) },
-                        label = { Text("Custom App Name") },
-                        placeholder = { Text("e.g. Notes, Calculator, System Tools") },
+                        label = { Text(stringResource(R.string.custom_spoof_app_name_label)) },
+                        placeholder = { Text(stringResource(R.string.custom_spoof_app_name_placeholder)) },
                         singleLine = true,
                         enabled = !isWorking,
                         isError = !nameValid,
                         leadingIcon = { Icon(Icons.Filled.Badge, contentDescription = null) },
                         supportingText = {
                             Text(
-                                if (nameValid) "Shown on your launcher and in Android App Info"
-                                else "App name cannot be empty"
+                                stringResource(
+                                    if (nameValid) R.string.custom_spoof_app_name_hint
+                                    else R.string.custom_spoof_app_name_empty
+                                )
                             )
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -186,8 +190,8 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
                     OutlinedTextField(
                         value = customPackageId,
                         onValueChange = { customPackageId = it.lowercase().filter { ch -> ch in 'a'..'z' || ch in '0'..'9' || ch == '.' || ch == '_' } },
-                        label = { Text("Custom Package ID") },
-                        placeholder = { Text("e.g. com.my.notes") },
+                        label = { Text(stringResource(R.string.custom_spoof_pkg_label)) },
+                        placeholder = { Text(stringResource(R.string.custom_spoof_pkg_placeholder)) },
                         singleLine = true,
                         enabled = !isWorking,
                         isError = !pkgValid,
@@ -197,13 +201,15 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
                                 onClick = { customPackageId = ApkSpoofer.generateRandomPackageId() },
                                 enabled = !isWorking
                             ) {
-                                Icon(Icons.Filled.Shuffle, contentDescription = "Generate random package ID")
+                                Icon(Icons.Filled.Shuffle, contentDescription = stringResource(R.string.custom_spoof_randomize))
                             }
                         },
                         supportingText = {
                             Text(
-                                if (pkgValid) "Valid Android package ID (re-signed with 0x3e6 GombokSU key)"
-                                else "Use lowercase letters, digits, underscores, and at least one dot (e.g. com.my.app)"
+                                stringResource(
+                                    if (pkgValid) R.string.custom_spoof_pkg_valid
+                                    else R.string.custom_spoof_pkg_invalid
+                                )
                             )
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -212,8 +218,8 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
                     if (hasRoot) {
                         SwitchItem(
                             icon = Icons.Filled.DeleteSweep,
-                            title = "Remove Old Spoofed App",
-                            summary = "Automatically uninstall $currentPackageId after launching the new package",
+                            title = stringResource(R.string.custom_spoof_remove_old),
+                            summary = stringResource(R.string.custom_spoof_remove_old_summary, currentPackageId),
                             checked = uninstallOldAfterInstall,
                             enabled = !isWorking,
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
@@ -250,7 +256,7 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
                 onClick = {
                     scope.launch {
                         isWorking = true
-                        statusText = "Starting custom spoof build…"
+                        statusText = context.getString(R.string.custom_spoof_starting)
                         val buildRes = ApkSpoofer.buildCustomSpoofedApk(
                             context = context,
                             newPackageId = customPackageId,
@@ -269,12 +275,12 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
                                 statusText = msg
                                 Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                             }.onFailure { err ->
-                                val errMsg = "Install failed: ${err.message}"
+                                val errMsg = context.getString(R.string.custom_spoof_install_failed, err.message ?: "")
                                 statusText = errMsg
                                 Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
                             }
                         }.onFailure { err ->
-                            val errMsg = "Repackage failed: ${err.message}"
+                            val errMsg = context.getString(R.string.custom_spoof_repackage_failed, err.message ?: "")
                             statusText = errMsg
                             Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
                         }
@@ -290,14 +296,14 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
             ) {
                 Icon(Icons.Filled.Build, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Build & Install Custom Spoofed APK", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.custom_spoof_build_and_install), fontWeight = FontWeight.Bold)
             }
 
             FilledTonalButton(
                 onClick = {
                     scope.launch {
                         isWorking = true
-                        statusText = "Building custom spoofed APK…"
+                        statusText = context.getString(R.string.custom_spoof_building)
                         val buildRes = ApkSpoofer.buildCustomSpoofedApk(
                             context = context,
                             newPackageId = customPackageId,
@@ -307,16 +313,16 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
                         buildRes.onSuccess { signedApk ->
                             val saveRes = ApkSpoofer.copyApkToDownloads(signedApk)
                             saveRes.onSuccess { outFile ->
-                                val msg = "Saved to Downloads/${outFile.name}"
+                                val msg = context.getString(R.string.custom_spoof_saved_to_downloads, outFile.name)
                                 statusText = msg
                                 Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                             }.onFailure { err ->
-                                val errMsg = "Failed to save to Downloads: ${err.message}"
+                                val errMsg = context.getString(R.string.custom_spoof_save_failed, err.message ?: "")
                                 statusText = errMsg
                                 Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
                             }
                         }.onFailure { err ->
-                            val errMsg = "Repackage failed: ${err.message}"
+                            val errMsg = context.getString(R.string.custom_spoof_repackage_failed, err.message ?: "")
                             statusText = errMsg
                             Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
                         }
@@ -332,7 +338,7 @@ fun CustomSpoofScreen(navigator: DestinationsNavigator) {
             ) {
                 Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Save Custom APK to Downloads", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.custom_spoof_save_to_downloads), fontWeight = FontWeight.SemiBold)
             }
         }
     }

@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -37,6 +38,7 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.delay
+import mci.github.gomboksu.R
 import mci.github.gomboksu.ui.LocalNavBarEnabled
 import mci.github.gomboksu.ui.LocalScrollState
 import mci.github.gomboksu.ui.MainActivity
@@ -47,7 +49,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 private data class AnimationPreset(
-    val name: String,
+    val nameRes: Int,
     val bounce: Float,
     val speed: Float,
     val transition: Int,
@@ -55,12 +57,12 @@ private data class AnimationPreset(
 )
 
 private val ANIMATION_PRESETS = listOf(
-    AnimationPreset("Balanced", 1.0f, 1.0f, 1, 1),
-    AnimationPreset("Snappy", 0.5f, 1.7f, 0, 1),
-    AnimationPreset("Bouncy", 1.6f, 0.95f, 1, 1),
-    AnimationPreset("Jelly", 2.4f, 0.75f, 4, 2),
-    AnimationPreset("Cinematic", 0.8f, 0.55f, 2, 3),
-    AnimationPreset("Minimal", 0.0f, 1.8f, 0, 0)
+    AnimationPreset(R.string.animations_preset_balanced, 1.0f, 1.0f, 1, 1),
+    AnimationPreset(R.string.animations_preset_snappy, 0.5f, 1.7f, 0, 1),
+    AnimationPreset(R.string.animations_preset_bouncy, 1.6f, 0.95f, 1, 1),
+    AnimationPreset(R.string.animations_preset_jelly, 2.4f, 0.75f, 4, 2),
+    AnimationPreset(R.string.animations_preset_cinematic, 0.8f, 0.55f, 2, 3),
+    AnimationPreset(R.string.animations_preset_minimal, 0.0f, 1.8f, 0, 0)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -116,36 +118,40 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
         label = "playgroundOffset"
     )
 
-    val bounceLabel = when {
-        !config.enabled || config.bounceMultiplier <= 0.05f -> "No Bounce"
-        config.bounceMultiplier < 0.7f -> "Subtle"
-        config.bounceMultiplier < 1.3f -> "Normal"
-        config.bounceMultiplier < 1.9f -> "Bouncy"
-        config.bounceMultiplier < 2.3f -> "Extra Bouncy"
-        else -> "Jelly!"
-    }
+    val bounceLabel = stringResource(
+        when {
+            !config.enabled || config.bounceMultiplier <= 0.05f -> R.string.animations_bounce_none
+            config.bounceMultiplier < 0.7f -> R.string.animations_bounce_subtle
+            config.bounceMultiplier < 1.3f -> R.string.animations_bounce_normal
+            config.bounceMultiplier < 1.9f -> R.string.animations_bounce_bouncy
+            config.bounceMultiplier < 2.3f -> R.string.animations_bounce_extra
+            else -> R.string.animations_bounce_jelly
+        }
+    )
 
-    val speedLabel = when {
-        config.speedMultiplier < 0.65f -> "Slow-Mo"
-        config.speedMultiplier < 0.9f -> "Relaxed"
-        config.speedMultiplier < 1.25f -> "Normal"
-        config.speedMultiplier < 1.8f -> "Snappy"
-        else -> "Hyper"
-    }
+    val speedLabel = stringResource(
+        when {
+            config.speedMultiplier < 0.65f -> R.string.animations_speed_slowmo
+            config.speedMultiplier < 0.9f -> R.string.animations_speed_relaxed
+            config.speedMultiplier < 1.25f -> R.string.animations_speed_normal
+            config.speedMultiplier < 1.8f -> R.string.animations_speed_snappy
+            else -> R.string.animations_speed_hyper
+        }
+    )
 
     val transitionOptions = listOf(
-        0 to "Slide",
-        1 to "Bouncy Zoom",
-        2 to "Depth Push",
-        3 to "Vertical Rise",
-        4 to "Elastic Pop"
+        0 to stringResource(R.string.animations_transition_slide),
+        1 to stringResource(R.string.animations_transition_bouncy_zoom),
+        2 to stringResource(R.string.animations_transition_depth_push),
+        3 to stringResource(R.string.animations_transition_vertical_rise),
+        4 to stringResource(R.string.animations_transition_elastic_pop)
     )
 
     val splashOptions = listOf(
-        0 to "Classic Spin",
-        1 to "Elastic Pop",
-        2 to "Pulse Wave",
-        3 to "3D Flip"
+        0 to stringResource(R.string.animations_splash_classic_spin),
+        1 to stringResource(R.string.animations_splash_elastic_pop),
+        2 to stringResource(R.string.animations_splash_pulse_wave),
+        3 to stringResource(R.string.animations_splash_3d_flip)
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -154,7 +160,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                 TopAppBar(
                     title = {
                         Text(
-                            text = "Animations",
+                            text = stringResource(R.string.animations_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Black,
                         )
@@ -176,7 +182,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                         }) {
                             Icon(
                                 imageVector = Icons.Filled.RestartAlt,
-                                contentDescription = "Reset animations"
+                                contentDescription = stringResource(R.string.animations_reset)
                             )
                         }
                     },
@@ -227,7 +233,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Live Physics Playground",
+                                text = stringResource(R.string.animations_playground),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -237,7 +243,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
                             ) {
                                 Text(
-                                    text = "Tap to Bounce",
+                                    text = stringResource(R.string.animations_tap_to_bounce),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -277,9 +283,8 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                         }
 
                         Text(
-                            text = String.format(
-                                Locale.US,
-                                "Bounce: %.1fx (%s)  •  Speed: %.1fx (%s)",
+                            text = stringResource(
+                                R.string.animations_playground_stats,
                                 config.bounceMultiplier,
                                 bounceLabel,
                                 config.speedMultiplier,
@@ -308,7 +313,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "Quick Presets",
+                                text = stringResource(R.string.animations_quick_presets),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -319,7 +324,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(ANIMATION_PRESETS, key = { it.name }) { preset ->
+                            items(ANIMATION_PRESETS, key = { it.nameRes }) { preset ->
                                 val isSelected =
                                     kotlin.math.abs(config.bounceMultiplier - preset.bounce) < 0.06f &&
                                         kotlin.math.abs(config.speedMultiplier - preset.speed) < 0.06f &&
@@ -338,7 +343,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                                         )
                                         playgroundToggle = !playgroundToggle
                                     },
-                                    label = { Text(preset.name) },
+                                    label = { Text(stringResource(preset.nameRes)) },
                                     leadingIcon = if (isSelected) {
                                         { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                                     } else null
@@ -365,7 +370,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "Spring Physics",
+                                text = stringResource(R.string.animations_spring_physics),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -374,8 +379,8 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
 
                         SwitchItem(
                             icon = Icons.Filled.Animation,
-                            title = "Enable Custom Animations",
-                            summary = "Master toggle for spring physics, bounce effects, and transitions",
+                            title = stringResource(R.string.animations_enable_custom),
+                            summary = stringResource(R.string.animations_enable_custom_summary),
                             checked = config.enabled,
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                         ) { checked ->
@@ -390,7 +395,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Bounce Multiplier",
+                                    text = stringResource(R.string.animations_bounce_multiplier),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -422,7 +427,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Animation Speed",
+                                    text = stringResource(R.string.animations_speed),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -465,7 +470,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "Page Transition Style",
+                                text = stringResource(R.string.animations_page_transition),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -513,7 +518,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
-                                    text = "Startup Splash Animation",
+                                    text = stringResource(R.string.animations_startup_splash),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
@@ -525,14 +530,14 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                             ) {
                                 Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Preview")
+                                Text(stringResource(R.string.animations_preview))
                             }
                         }
 
                         SwitchItem(
                             icon = Icons.Filled.AutoAwesome,
-                            title = "Play Startup Splash",
-                            summary = "Show animated app icon intro when launching GombokSU Enhanced",
+                            title = stringResource(R.string.animations_play_startup_splash),
+                            summary = stringResource(R.string.animations_play_startup_splash_summary),
                             checked = enableStartupAnimation,
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                         ) { checked ->
@@ -579,7 +584,7 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "Motion Effects",
+                                text = stringResource(R.string.animations_motion_effects),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -588,8 +593,8 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
 
                         SwitchItem(
                             icon = Icons.Filled.TouchApp,
-                            title = "Card Press Bounce",
-                            summary = "Tactile spring squish & bounce when tapping cards",
+                            title = stringResource(R.string.animations_card_press_bounce),
+                            summary = stringResource(R.string.animations_card_press_bounce_summary),
                             checked = config.cardPressBounce,
                             enabled = config.enabled,
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
@@ -599,8 +604,8 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
 
                         SwitchItem(
                             icon = Icons.Filled.ViewStream,
-                            title = "Staggered Card Entrance",
-                            summary = "Cascade cards smoothly into view when opening screens",
+                            title = stringResource(R.string.animations_staggered_entrance),
+                            summary = stringResource(R.string.animations_staggered_entrance_summary),
                             checked = config.staggeredEntrance,
                             enabled = config.enabled,
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
@@ -610,8 +615,8 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
 
                         SwitchItem(
                             icon = Icons.Filled.Radar,
-                            title = "Status Card Pulse Glow",
-                            summary = "Subtle breathing pulse ring on the Home Working status card",
+                            title = stringResource(R.string.animations_status_pulse_glow),
+                            summary = stringResource(R.string.animations_status_pulse_glow_summary),
                             checked = config.statusPulseGlow,
                             enabled = config.enabled,
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
@@ -621,8 +626,8 @@ fun AnimationsScreen(navigator: DestinationsNavigator) {
 
                         SwitchItem(
                             icon = Icons.Filled.Navigation,
-                            title = "Nav Bar Icon & Pill Bounce",
-                            summary = "Apply Bounce Multiplier to the bottom navigation pill & active icons",
+                            title = stringResource(R.string.animations_navbar_bounce),
+                            summary = stringResource(R.string.animations_navbar_bounce_summary),
                             checked = config.navBarIconBounce,
                             enabled = config.enabled,
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)

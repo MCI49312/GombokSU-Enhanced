@@ -70,15 +70,15 @@ fun ContributorsScreen(navigator: DestinationsNavigator) {
         Contributor(
             login = "MCI49312",
             githubUrl = "https://github.com/MCI49312",
-            role = "GombokSU Developer",
-            subtitle = "I do NOT accept donations",
+            role = stringResource(R.string.contributor_gomboksu_dev),
+            subtitle = stringResource(R.string.contributor_no_donations),
             donationUrl = null
         ),
         Contributor(
             login = "rifsxd",
             name = "Rifat Azad",
             githubUrl = "https://github.com/rifsxd",
-            role = "KernelSU Next Author",
+            role = stringResource(R.string.contributor_ksun_author),
             donationUrl = "https://github.com/KernelSU-Next/KernelSU-Next/tree/dev?tab=readme-ov-file#-donations"
         ),
         Contributor(

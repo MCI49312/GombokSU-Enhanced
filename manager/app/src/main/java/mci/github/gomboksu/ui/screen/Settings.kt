@@ -822,14 +822,14 @@ private fun AppSettingsCard(
                 leadingContent = { Icon(Icons.Filled.SystemUpdate, null) },
                 headlineContent = {
                     Text(
-                        text = "App Updater",
+                        text = stringResource(R.string.updater_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
                 supportingContent = {
-                    val buildType = if (isCurrentAppSpoofed()) "Spoofed" else "Normal"
-                    Text("Check for updates, auto-update, or reinstall ($buildType build)")
+                    val buildType = stringResource(if (isCurrentAppSpoofed()) R.string.updater_build_spoofed else R.string.updater_build_normal)
+                    Text(stringResource(R.string.updater_settings_summary, buildType))
                 },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 modifier = Modifier
@@ -851,13 +851,13 @@ private fun AppSettingsCard(
                     },
                     headlineContent = {
                         Text(
-                            text = "Custom Spoof",
+                            text = stringResource(R.string.custom_spoof_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
                     },
                     supportingContent = {
-                        Text("Change package ID and app name (${context.packageName})")
+                        Text(stringResource(R.string.custom_spoof_settings_summary, context.packageName))
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     modifier = Modifier

@@ -5,9 +5,13 @@
 #include <linux/types.h>
 #include <linux/compiler_types.h>
 
+struct path;
+
 /* The sus_mount control node: decides WHICH mounts count as ours (the on/off switch stays the hide_sus_mnts_for_non_su_procs supercall); root-only, ENOENT for everyone else through sus_path. */
 #define SUSFS_HIDE_MOUNTS_NODE "/proc/susfs_hide_mounts"
 
+bool sus_mount_hide_active(void);
+bool sus_mount_path_hidden(const struct path *path);
 int susfs_sus_mount_init(void);
 void susfs_sus_mount_exit(void);
 

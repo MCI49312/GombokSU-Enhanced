@@ -278,6 +278,7 @@ susfs_lookup_decide(struct path *path, long ret,
 	if (ret || !path || !path->dentry || !n)
 		return ret;
 	ctx.inode = d_inode(path->dentry);
+	ctx.path = path;
 	for (i = 0; i < n; i++) {
 		struct susfs_hook *c = READ_ONCE(targets[target].consumers[i]);
 
@@ -318,6 +319,7 @@ long __nocfi susfs_path_openat_decide(unsigned long *saved)
 	if (IS_ERR_OR_NULL(file) || !n)
 		return (long)file;
 	ctx.inode = file_inode(file);
+	ctx.path = &file->f_path;
 	for (i = 0; i < n; i++) {
 		struct susfs_hook *c = READ_ONCE(targets[SUSFS_HOOK_TARGET_PATH_OPENAT].consumers[i]);
 

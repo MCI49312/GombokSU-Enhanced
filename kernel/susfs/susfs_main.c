@@ -24,12 +24,14 @@
 #include "sus_mount.h"
 #include "sus_path.h"
 #include "susfs_avc_spoof.h"
+#include "susfs_selinux_hide.h"
 #include "susfs_control.h"
 #include "susfs_core.h"
 #include "susfs_create_gate.h"
 #include "susfs_dirent.h"
 #include "susfs_hide_syms.h"
 #include "susfs_kstat.h"
+#include "susfs_priority_uid.h"
 #include "susfs_open_redirect.h"
 #include "susfs_supercall.h"
 #include "susfs_uname.h"
@@ -98,6 +100,7 @@ enum susfs_layer_id {
     SUSFS_L_KSU_UMOUNT_GATE,
     SUSFS_L_KSU_ALLOW_GATE,
     SUSFS_L_LSM_HOOK,
+    SUSFS_L_SELINUX_HIDE,
     SUSFS_L_SUS_PATH,
     SUSFS_L_CREATE_GATE,
     SUSFS_L_OPATH,
@@ -110,6 +113,7 @@ enum susfs_layer_id {
     SUSFS_L_OPEN_REDIRECT,
     SUSFS_L_ENABLE_LOG,
     SUSFS_L_AVC_SPOOF,
+    SUSFS_L_PRIORITY,
     SUSFS_L_SUPERCALL,
     SUSFS_L_HIDE_SYMS,
     SUSFS_L_COUNT,
@@ -142,6 +146,11 @@ static struct susfs_layer {
      * "loaded but inert" shape fp_hook is fatal for.  ksu_lsm_hook_init() itself only
      * reports; the refusal lives here, where a failure can fail the load. */
     { "lsm_hook",	layer_lsm_hook_init,		ksu_lsm_hook_exit,	false, -1 },
+    /* After lsm_hook, which owns the security_hook_heads replacement helpers.
+     * NOT fatal: without it app writes of su contexts keep answering the
+     * pre-layer way (EINVAL/denied), which is a visible failure, not a broken
+     * module. */
+    { "selinux_hide",	susfs_selinux_hide_init,	susfs_selinux_hide_exit, false, -1 },
     { "sus_path",	sus_path_init,			sus_path_exit,		false, SUSFS_FEAT_SUS_PATH },
     /* After sus_path, whose rule table and per-caller gate it asks.  NOT fatal: when it
      * cannot arm, the create family keeps answering the kernel's own way (EEXIST for a
@@ -164,6 +173,9 @@ static struct susfs_layer {
     { "open_redirect",	susfs_open_redirect_init,	susfs_open_redirect_exit, false, SUSFS_FEAT_OPEN_REDIRECT },
     { "enable_log",	susfs_enable_log_init,		susfs_enable_log_exit,	false, SUSFS_FEAT_ENABLE_LOG },
     { "avc_spoof",	susfs_avc_spoof_init,		susfs_avc_spoof_exit,	false, SUSFS_FEAT_AVC_SPOOF },
+    /* Independent of the mount/kstat layers: four syscall wrappers + one RCU
+     * bitmap.  NOT fatal: without it those syscalls answer the kernel's way. */
+    { "priority",	susfs_priority_init,		susfs_priority_exit,	false, SUSFS_FEAT_PRIORITY_UID_FILTER },
     { "supercall",	susfs_supercall_init,		susfs_supercall_exit,	false, -1 },
     { "hide_syms",	susfs_hide_syms_init,		susfs_hide_syms_exit,	false, SUSFS_FEAT_HIDE_SYMS },
 };
@@ -175,9 +187,10 @@ static struct susfs_layer {
  *
  * Index map (keep this list and the fail_layer= references in tools/verify-gki.sh and the layer
  * comments in sync whenever a layer is inserted):
- *   1 fp_hook   2 ksu_umount_gate  3 ksu_allow_gate  4 lsm_hook   5 sus_path
- *   6 create_gate  7 opath  8 dirent  9 uname  10 kstat  11 sus_map  12 sus_mount
- *   13 cmdline  14 open_redirect  15 enable_log  16 avc_spoof  17 supercall  18 hide_syms
+ *   1 fp_hook   2 ksu_umount_gate  3 ksu_allow_gate  4 lsm_hook  5 selinux_hide
+ *   6 sus_path  7 create_gate  8 opath  9 dirent  10 uname  11 kstat  12 sus_map
+ *   13 sus_mount  14 cmdline  15 open_redirect  16 enable_log  17 avc_spoof
+ *   18 priority  19 supercall  20 hide_syms
  */
 static int fail_layer;
 module_param_named(fail_layer, fail_layer, int, 0644);
@@ -210,6 +223,7 @@ static const struct {
     { SUSFS_L_KSU_UMOUNT_GATE, false },
     { SUSFS_L_KSU_ALLOW_GATE, false },
     { SUSFS_L_LSM_HOOK, true },
+    { SUSFS_L_SELINUX_HIDE, false },
     { SUSFS_L_SUS_PATH, true },
     { SUSFS_L_CREATE_GATE, false },
     { SUSFS_L_OPATH, false },
@@ -222,6 +236,7 @@ static const struct {
     { SUSFS_L_OPEN_REDIRECT, false },
     { SUSFS_L_ENABLE_LOG, false },
     { SUSFS_L_AVC_SPOOF, false },
+    { SUSFS_L_PRIORITY, false },
     { SUSFS_L_SUPERCALL, true },
     { SUSFS_L_HIDE_SYMS, false },
 };

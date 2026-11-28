@@ -147,6 +147,8 @@
 #include "susfs_abi.h"
 #include "susfs_log.h"
 #include "sus_mount.h"
+#include "susfs_mount_fp.h"
+#include "susfs_mount_mnt.h"
 #include "sus_path.h"
 #include "susfs_control.h"
 #include "susfs_helpers.h"
@@ -156,6 +158,7 @@
 #include "sus_mount_policy.h"
 #include "sus_mount_view.h"
 #include "sus_mount_prefix.h"
+#include "susfs_priority_uid.h"
 
 /* F keeps the rescan counter and the sysfs truncation reserve; the records are in D. */
 #define SUS_MOUNT_KEEP_TRUNC_RESERVE (SUS_MOUNT_KEEP_LEN + 64)
@@ -261,6 +264,11 @@ static bool sus_mount_ida_ready(void)
  * list is not guaranteed to carry it for modules, so it is resolved from kallsyms like
  * the other optional symbols this LKM uses. */
 static void (*pfn_security_cred_getsecid)(const struct cred *cred, u32 *secid);
+/* KernelSU's own predicate: true = this uid's process is an app whose view
+ * should be umounted/hidden.  It is the module-symbol source of upstream's
+ * TIF_PROC_UMOUNTED, so using it keeps the app set identical to KernelSU's
+ * instead of a uid-range approximation. */
+static bool (*pfn_ksu_uid_should_umount)(uid_t uid);
 static char *(*pfn_d_path)(const struct path *path, char *buf, int buflen);
 
 /* __nocfi on every function that reaches a resolved kernel symbol through a function
@@ -428,6 +436,13 @@ static int sus_mount_shown_id(struct mount *mnt)
 /* Defined with the scan helpers further down; the identity test needs it here. */
 static bool sus_mount_path_is_ours(const char *s);
 
+static __nocfi bool sus_mount_uid_app(uid_t uid)
+{
+    if (pfn_ksu_uid_should_umount)
+        return pfn_ksu_uid_should_umount(uid);
+    return uid % 100000 >= 10000;
+}
+
 static atomic_t n_ident_hits = ATOMIC_INIT(0);		/* hidden by identity, not by id */
 static atomic_t n_ident_learned = ATOMIC_INIT(0);	/* ids learned while hiding */
 static atomic_t n_sb_down = ATOMIC_INIT(0);		/* superblocks seen shut down */
@@ -437,6 +452,7 @@ module_param_named(mount_dbg, mount_dbg, int, 0644);
 /* Diagnostic: name the fields the identity test compares, for the first few mounts the
  * hook sees, so "why did identity not match" is answerable from dmesg instead of guessed. */
 static atomic_t n_dbg_logged = ATOMIC_INIT(0);
+static atomic_t n_path_hidden_dbg = ATOMIC_INIT(0);
 
 /* generic_shutdown_super(struct super_block *sb) - fs/super.c, EXPORT_SYMBOL, so
  * it is a real function in kallsyms and not an inlined call site.  Runs before the
@@ -2024,6 +2040,10 @@ int susfs_sus_mount_init(void)
 
     pfn_security_cred_getsecid =
         (void *)find_kernel_symbol_exact("security_cred_getsecid");
+    pfn_ksu_uid_should_umount = (void *)find_kernel_symbol_exact_any(
+        "ksu_uid_should_umount");
+    if (!pfn_ksu_uid_should_umount)
+        pr_warn("sus_mount: ksu_uid_should_umount not found - falling back to the uid range check\n");
     pfn_d_path = (void *)find_kernel_symbol_exact("d_path");
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
     void *loader_xa = (void *)&mnt_id_xa;
@@ -2165,6 +2185,14 @@ int susfs_sus_mount_init(void)
                     mount_keep_pending, rc);
     }
     mutex_unlock(&sus_mount_keep_param_lock);
+
+    /* Syscall face: the __lookup_mnt equivalent (path entries + mount entries).
+     * Not fatal - the show hooks above already hide the mount lines. */
+    if (susfs_mount_fp_init())
+        pr_warn("sus_mount: syscall face not armed (show hooks still hide the lines)\n");
+    /* Path-resolution face (lookup inline, FP fallback), independent of sus_path. */
+    if (susfs_mount_mnt_init())
+        pr_warn("sus_mount: path-resolution face not armed\n");
     return 0;
 }
 
@@ -2263,8 +2291,65 @@ static void sus_mount_unregister(void)
     mutex_unlock(&sus_mount_ctl_lock);
 }
 
+bool sus_mount_hide_active(void)
+{
+    return mount_registered;
+}
+
+/* Path layer (sus_path lookup consumer): is this inode's mount one of ours,
+ * and is the caller an app?  Same gates as upstream's __lookup_mnt spoof -
+ * only an enabled SUS_MOUNT and only non-su processes.  The decision is made
+ * after the real lookup returned, so the cost is the original lookup's.
+ *
+ * Learning: a mount that is not marked yet is still hidden when the accessed
+ * path lies under a hidden prefix, and its identity is remembered on the spot
+ * (the same identity table the namespace scans fill), so later lookups of that
+ * mount are hidden without the id allocator having touched it. */
+bool sus_mount_path_hidden(const struct path *path)
+{
+    struct mount *r;
+    char *buf;
+    const char *p;
+    bool hidden;
+
+    if (!path || !path->mnt || !mount_registered)
+        return false;
+    if (!sus_mount_uid_app(__kuid_val(current_uid())))
+        return false;
+    r = real_mount(path->mnt);
+    if (sus_mount_ident_match(r))
+        return true;
+    if ((unsigned int)r->mnt_id >= SUS_MOUNT_KSU_ID_MIN)
+        return true;
+    if (!sus_mount_prefix_count())
+        return false;
+    buf = kmalloc(PATH_MAX, GFP_KERNEL);
+    if (!buf)
+        return false;
+    /* Match the mount's SOURCE path, not the accessed path: a bind mount of
+     * /data/adb/modules/... onto /aped/<...> (zygisk's dex2oat binds are the
+     * live example) has its root dentry in /data/adb, while the accessed path
+     * is nowhere near it.  The root dentry's d_path is exactly that source. */
+    {
+        struct path root = { .mnt = path->mnt, .dentry = path->mnt->mnt_root };
+
+        p = sus_mount_d_path(&root, buf, PATH_MAX);
+    }
+    hidden = !IS_ERR(p) && p && sus_mount_prefix_match(p);
+    if ((hidden || (p && !IS_ERR(p) && !strncmp(p, "/data/adb", 9))) &&
+        atomic_inc_return(&n_path_hidden_dbg) <= 40u)
+        pr_info("sus_mount: path_hidden mnt_id=%d src=%s hit=%d\n",
+                (int)r->mnt_id, IS_ERR(p) ? "(err)" : p, (int)hidden);
+    if (hidden)
+        sus_mount_ident_add(r, 0);
+    kfree(buf);
+    return hidden;
+}
+
 void susfs_sus_mount_exit(void)
 {
+    susfs_mount_mnt_exit();
+    susfs_mount_fp_exit();
     if (sus_mount_keep_entry) {
         proc_remove(sus_mount_keep_entry);
         sus_mount_keep_entry = NULL;

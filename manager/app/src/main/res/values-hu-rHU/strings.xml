@@ -556,4 +556,54 @@
     <string name="custom_spoof_save_to_downloads">Egyéni APK mentése a Letöltésekbe</string>
     <string name="custom_spoof_saved_to_downloads">Mentve: Downloads/%1$s</string>
     <string name="custom_spoof_save_failed">Mentés a Letöltésekbe sikertelen: %1$s</string>
+
+    <!-- GombokSU Enhanced: Theme & Animation Profile Backup -->
+    <string name="section_profile_backup">Téma és animációs profilok</string>
+    <string name="profile_backup_summary">Az összes szín, betűtípus, navigációs sáv, elrendezés és animációs beállítás exportálása vagy importálása JSON profilként.</string>
+    <string name="profile_export_button">Profil exportálása</string>
+    <string name="profile_import_button">Profil importálása</string>
+    <string name="profile_copy_json">JSON másolása</string>
+    <string name="profile_save_file">.json mentése</string>
+    <string name="profile_paste_json">Beillesztés vágólapról</string>
+    <string name="profile_load_file">.json betöltése</string>
+    <string name="profile_copied_toast">Profil JSON a vágólapra másolva</string>
+    <string name="profile_saved_toast">Profil sikeresen elmentve</string>
+    <string name="profile_save_failed_toast">Profil mentése sikertelen: %1$s</string>
+    <string name="profile_imported_toast">Profil importálva és alkalmazva</string>
+    <string name="profile_import_failed_toast">Érvénytelen profil: %1$s</string>
+    <string name="profile_import_dialog_title">Testreszabási profil importálása</string>
+    <string name="profile_import_dialog_hint">Illeszd be alább a GombokSU Enhanced JSON profilt, vagy tölts be egy .json fájlt.</string>
+
+    <!-- GombokSU Enhanced: Root Terminal & Diagnostics -->
+    <string name="root_shell_title">Root terminál és diagnosztika</string>
+    <string name="root_shell_settings_summary">Root parancsok futtatása, ksud, dmesg, logcat, csatolások és tulajdonságok ellenőrzése</string>
+    <string name="root_shell_root_ready">Root Shell készen áll</string>
+    <string name="root_shell_no_root">Root nem elérhető (Korlátozott mód)</string>
+    <string name="root_shell_root_ready_summary">A parancsok KernelSU root jogosultsággal futnak.</string>
+    <string name="root_shell_no_root_summary">Nincs root jogosultság; csak jogosultság nélküli parancsok futnak le.</string>
+    <string name="root_shell_global_mnt">Globális csatolási névtér (--mount-master)</string>
+    <string name="root_shell_global_mnt_summary">Parancsok futtatása a globális init csatolási névtérben</string>
+    <string name="root_shell_quick_diagnostics">Gyors diagnosztika</string>
+    <string name="root_shell_preset_identity">Azonosító és Kernel</string>
+    <string name="root_shell_preset_ksu_modules">KSU modulok</string>
+    <string name="root_shell_preset_dmesg">Kernel napló (dmesg)</string>
+    <string name="root_shell_preset_logcat">Logcat (Figyelmeztetések+)</string>
+    <string name="root_shell_preset_mounts">Csatolások</string>
+    <string name="root_shell_preset_props">Rendszer tulajdonságok</string>
+    <string name="root_shell_preset_susfs">ksud és /data/adb</string>
+    <string name="root_shell_preset_processes">Folyamatok</string>
+    <string name="root_shell_command_label">Shell parancs</string>
+    <string name="root_shell_command_placeholder">pl. getenforce &amp;&amp; dmesg | tail -n 30</string>
+    <string name="root_shell_run">Futtatás</string>
+    <string name="root_shell_running">Futtatás…</string>
+    <string name="root_shell_console_title">Konzol kimenet</string>
+    <string name="root_shell_idle">Készenlét</string>
+    <string name="root_shell_exit_status">Kilépés %1$d • %2$d ms</string>
+    <string name="root_shell_empty_hint">Koppints egy diagnosztikára fent, vagy írj be egy parancsot…</string>
+    <string name="root_shell_no_output">(nincs kimenet)</string>
+    <string name="root_shell_copied">Kimenet a vágólapra másolva</string>
+    <string name="root_shell_copy_output">Kimenet másolása</string>
+    <string name="root_shell_save_output">Kimenet mentése</string>
+    <string name="root_shell_clear_output">Konzol törlése</string>
+    <string name="root_shell_save_failed">Mentés sikertelen: %1$s</string>
 </resources>

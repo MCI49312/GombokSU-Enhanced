@@ -998,6 +998,25 @@ private fun AppSettingsCard(
                 }
             )
 
+            ListItem(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { navigator.navigate(RootShellScreenDestination) },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                leadingContent = { Icon(Icons.Filled.Terminal, null, tint = MaterialTheme.colorScheme.primary) },
+                headlineContent = {
+                    Text(
+                        text = stringResource(R.string.root_shell_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                supportingContent = {
+                    Text(stringResource(R.string.root_shell_settings_summary))
+                }
+            )
+
             var showBottomsheet by remember { mutableStateOf(false) }
 
             ListItem(

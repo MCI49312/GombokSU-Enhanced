@@ -559,4 +559,54 @@
     <string name="custom_spoof_save_to_downloads">Save Custom APK to Downloads</string>
     <string name="custom_spoof_saved_to_downloads">Saved to Downloads/%1$s</string>
     <string name="custom_spoof_save_failed">Failed to save to Downloads: %1$s</string>
+
+    <!-- GombokSU Enhanced: Theme & Animation Profile Backup -->
+    <string name="section_profile_backup">Theme &amp; Animation Profiles</string>
+    <string name="profile_backup_summary">Export or import all colors, fonts, nav bar, layout, and animation settings as a JSON profile.</string>
+    <string name="profile_export_button">Export Profile</string>
+    <string name="profile_import_button">Import Profile</string>
+    <string name="profile_copy_json">Copy JSON</string>
+    <string name="profile_save_file">Save .json</string>
+    <string name="profile_paste_json">Paste from Clipboard</string>
+    <string name="profile_load_file">Load .json</string>
+    <string name="profile_copied_toast">Profile JSON copied to clipboard</string>
+    <string name="profile_saved_toast">Profile saved successfully</string>
+    <string name="profile_save_failed_toast">Failed to save profile: %1$s</string>
+    <string name="profile_imported_toast">Profile imported and applied</string>
+    <string name="profile_import_failed_toast">Invalid profile: %1$s</string>
+    <string name="profile_import_dialog_title">Import Customization Profile</string>
+    <string name="profile_import_dialog_hint">Paste a GombokSU Enhanced JSON profile below or load one from a .json file.</string>
+
+    <!-- GombokSU Enhanced: Root Terminal & Diagnostics -->
+    <string name="root_shell_title">Root Terminal &amp; Diagnostics</string>
+    <string name="root_shell_settings_summary">Run root commands, inspect ksud, dmesg, logcat, mounts, and props</string>
+    <string name="root_shell_root_ready">Root Shell Ready</string>
+    <string name="root_shell_no_root">Root Unavailable (Limited Mode)</string>
+    <string name="root_shell_root_ready_summary">Commands run via KernelSU root shell.</string>
+    <string name="root_shell_no_root_summary">Root access not granted; only unprivileged commands will succeed.</string>
+    <string name="root_shell_global_mnt">Global Mount Namespace (--mount-master)</string>
+    <string name="root_shell_global_mnt_summary">Run commands in the global init mount namespace</string>
+    <string name="root_shell_quick_diagnostics">One-Tap Diagnostics</string>
+    <string name="root_shell_preset_identity">Identity &amp; Kernel</string>
+    <string name="root_shell_preset_ksu_modules">KSU Modules</string>
+    <string name="root_shell_preset_dmesg">Kernel Log (dmesg)</string>
+    <string name="root_shell_preset_logcat">Logcat (Warn+)</string>
+    <string name="root_shell_preset_mounts">Mounts</string>
+    <string name="root_shell_preset_props">System Props</string>
+    <string name="root_shell_preset_susfs">ksud &amp; /data/adb</string>
+    <string name="root_shell_preset_processes">Processes</string>
+    <string name="root_shell_command_label">Shell Command</string>
+    <string name="root_shell_command_placeholder">e.g. getenforce &amp;&amp; dmesg | tail -n 30</string>
+    <string name="root_shell_run">Run Command</string>
+    <string name="root_shell_running">Running…</string>
+    <string name="root_shell_console_title">Console Output</string>
+    <string name="root_shell_idle">Idle</string>
+    <string name="root_shell_exit_status">Exit %1$d • %2$d ms</string>
+    <string name="root_shell_empty_hint">Tap a diagnostic chip above or enter a command to run…</string>
+    <string name="root_shell_no_output">(no output)</string>
+    <string name="root_shell_copied">Output copied to clipboard</string>
+    <string name="root_shell_copy_output">Copy output</string>
+    <string name="root_shell_save_output">Save output</string>
+    <string name="root_shell_clear_output">Clear console</string>
+    <string name="root_shell_save_failed">Failed to save output: %1$s</string>
 </resources>

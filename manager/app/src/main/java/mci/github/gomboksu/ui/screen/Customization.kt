@@ -1,8 +1,13 @@
 package mci.github.gomboksu.ui.screen
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -63,6 +68,8 @@ import mci.github.gomboksu.ui.theme.AccentPreset
 import mci.github.gomboksu.ui.theme.AppFontPreset
 import mci.github.gomboksu.ui.util.AnimationConfig
 import mci.github.gomboksu.ui.util.AppIconPreset
+import mci.github.gomboksu.ui.util.CustomizationProfileData
+import mci.github.gomboksu.ui.util.CustomizationProfileManager
 import mci.github.gomboksu.ui.util.LocalAnimationConfig
 import mci.github.gomboksu.ui.util.LocalSnackbarHost
 import mci.github.gomboksu.ui.util.LocaleHelper
@@ -109,6 +116,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
     var showLanguageSheet by remember { mutableStateOf(false) }
     var showCustomColorDialog by remember { mutableStateOf(false) }
     var showHeaderTitleDialog by remember { mutableStateOf(false) }
+    var showImportProfileDialog by remember { mutableStateOf(false) }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         currentAppLocale = LocaleHelper.getCurrentAppLocale(context)
@@ -149,6 +157,83 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
     var showIssueReport by rememberSaveable { mutableStateOf(prefs.getBoolean("home_show_issue_report", true)) }
     var customHeaderTitle by rememberSaveable { mutableStateOf(prefs.getString("custom_header_title", "GombokSU Enhanced") ?: "GombokSU Enhanced") }
     var customHeaderSubtitle by rememberSaveable { mutableStateOf(prefs.getString("custom_header_subtitle", "") ?: "") }
+
+    fun applyImportedProfile(rawJson: String): Boolean {
+        return CustomizationProfileManager.importProfileJson(context, rawJson, activity)
+            .onSuccess { imported: CustomizationProfileData ->
+                themeMode = imported.themeMode
+                dynamicColor = imported.dynamicColor
+                enableAmoled = imported.amoledMode
+                accentPresetKey = imported.accentPresetKey
+                customAccentArgb = imported.customAccentArgb
+                cardRadiusDp = imported.cardRadiusDp
+                fontStyleKey = imported.fontStyleKey
+                appIconKey = imported.appIconKey
+                enableNavBar = imported.enableNavBar
+                navBarAutoHide = imported.navBarAutoHide
+                navBarStyle = imported.navBarStyle
+                navBarShowLabels = imported.navBarShowLabels
+                swipeNavigation = imported.swipeNavigation
+                hapticFeedback = imported.hapticFeedback
+                enableStartupAnimation = imported.enableStartupAnimation
+                useBanner = imported.useBanner
+                showAboutDevice = imported.showAboutDevice
+                autoExpandInfo = imported.autoExpandInfo
+                showContributors = imported.showContributors
+                showIssueReport = imported.showIssueReport
+                customHeaderTitle = imported.customHeaderTitle
+                customHeaderSubtitle = imported.customHeaderSubtitle
+                bottomBarScrollState?.isScrollingDown?.value = false
+                Toast.makeText(context, R.string.profile_imported_toast, Toast.LENGTH_SHORT).show()
+            }
+            .onFailure { err ->
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.profile_import_failed_toast, err.message ?: ""),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            .isSuccess
+    }
+
+    val exportProfileLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching {
+            val json = CustomizationProfileManager.exportProfileJson(context)
+            context.contentResolver.openOutputStream(uri)?.use { out ->
+                out.write(json.toByteArray(Charsets.UTF_8))
+            } ?: error("Cannot open output stream")
+        }.onSuccess {
+            Toast.makeText(context, R.string.profile_saved_toast, Toast.LENGTH_SHORT).show()
+        }.onFailure { err ->
+            Toast.makeText(
+                context,
+                context.getString(R.string.profile_save_failed_toast, err.message ?: ""),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    val importProfileLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use {
+                it.readText()
+            } ?: error("Cannot read file")
+        }.onSuccess { raw ->
+            applyImportedProfile(raw)
+        }.onFailure { err ->
+            Toast.makeText(
+                context,
+                context.getString(R.string.profile_import_failed_toast, err.message ?: ""),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 
     val effectiveDark = when (themeMode) {
         1 -> false
@@ -1102,6 +1187,75 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     showContributors = checked
                 }
             }
+
+            // SECTION 5: THEME & ANIMATION PROFILE EXPORT / IMPORT
+            SectionCard(
+                title = stringResource(R.string.section_profile_backup),
+                icon = Icons.Filled.ImportExport
+            ) {
+                Text(
+                    text = stringResource(R.string.profile_backup_summary),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilledTonalButton(
+                        onClick = {
+                            val json = CustomizationProfileManager.exportProfileJson(context)
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText("GombokSU Profile", json))
+                            Toast.makeText(context, R.string.profile_copied_toast, Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.profile_copy_json), maxLines = 1)
+                    }
+                    Button(
+                        onClick = {
+                            exportProfileLauncher.launch("gomboksu_profile.json")
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Filled.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.profile_save_file), maxLines = 1)
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showImportProfileDialog = true },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Filled.ContentPaste, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.profile_paste_json), maxLines = 1)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            importProfileLauncher.launch(arrayOf("application/json", "text/*"))
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Filled.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.profile_load_file), maxLines = 1)
+                    }
+                }
+            }
         }
     }
 
@@ -1152,6 +1306,17 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     putString("custom_header_subtitle", finalSub)
                 }
                 showHeaderTitleDialog = false
+            }
+        )
+    }
+
+    if (showImportProfileDialog) {
+        ImportProfileDialog(
+            onDismiss = { showImportProfileDialog = false },
+            onConfirm = { jsonText ->
+                if (applyImportedProfile(jsonText)) {
+                    showImportProfileDialog = false
+                }
             }
         )
     }
@@ -1344,6 +1509,58 @@ private fun CustomHeaderDialog(
         confirmButton = {
             Button(onClick = { onConfirm(title, subtitle) }) {
                 Text(stringResource(R.string.confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun ImportProfileDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    val context = LocalContext.current
+    var jsonInput by remember {
+        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = cm.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+        mutableStateOf(if (clip.trimStart().startsWith("{")) clip else "")
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.profile_import_dialog_title),
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = stringResource(R.string.profile_import_dialog_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = jsonInput,
+                    onValueChange = { jsonInput = it },
+                    placeholder = { Text("{\"format\": \"gomboksu_enhanced_profile\", ...}") },
+                    maxLines = 8,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(jsonInput) },
+                enabled = jsonInput.isNotBlank()
+            ) {
+                Text(stringResource(R.string.profile_import_button))
             }
         },
         dismissButton = {

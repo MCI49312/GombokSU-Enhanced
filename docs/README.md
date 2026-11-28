@@ -2,7 +2,7 @@
 
 # GombokSU Enhanced
 
-**A customized fork of [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next) with an advanced theme studio, 57-font picker, 4-icon selector, built-in auto-updater, and automated upstream release syncing.**
+**A customized fork of [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next) featuring a full Theme & Animation Studio, 57-font picker, 4-icon selector, on-device Custom Spoof, built-in Root Terminal & Diagnostics, App Updater, and automated upstream release syncing.**
 
 [![Latest Release](https://img.shields.io/github/v/release/MCI49312/GombokSU-Enhanced?style=for-the-badge&logo=github)](https://github.com/MCI49312/GombokSU-Enhanced/releases/latest)
 [![License](https://img.shields.io/github/license/MCI49312/GombokSU-Enhanced?style=for-the-badge)](../LICENSE)

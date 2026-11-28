@@ -315,8 +315,11 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 }
             }
             GombokAnimatedEntrance(index = 4) {
-                UpdaterLinkCard(
-                    onClick = {
+                HomeQuickActionsRow(
+                    onOpenTerminal = {
+                        navigator.navigate(RootShellScreenDestination)
+                    },
+                    onOpenUpdater = {
                         navigator.navigate(UpdaterScreenDestination)
                     }
                 )
@@ -588,46 +591,50 @@ fun UpdateCard(onOpenUpdater: () -> Unit = {}) {
 }
 
 @Composable
-private fun UpdaterLinkCard(onClick: () -> Unit) {
-    val context = LocalContext.current
-    val (currentVersionName, _) = remember(context) { getManagerVersion(context) }
-    val buildTypeLabel = stringResource(if (isCurrentAppSpoofed()) R.string.updater_build_spoofed else R.string.updater_build_normal)
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .gombokPressBounce()
-            .clickable { onClick() }
+private fun HomeQuickActionsRow(
+    onOpenTerminal: () -> Unit,
+    onOpenUpdater: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
+        Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .weight(1f)
+                .height(64.dp)
+                .gombokPressBounce()
+                .clickable { onOpenTerminal() }
         ) {
-            Icon(
-                imageVector = Icons.Filled.SystemUpdate,
-                contentDescription = null,
-                modifier = Modifier.padding(end = 20.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.updater_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = stringResource(R.string.updater_home_summary, currentVersionName, buildTypeLabel),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Terminal,
+                    contentDescription = stringResource(R.string.root_shell_title),
+                    modifier = Modifier.size(28.dp)
                 )
             }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        }
+
+        Card(
+            modifier = Modifier
+                .weight(1f)
+                .height(64.dp)
+                .gombokPressBounce()
+                .clickable { onOpenUpdater() }
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.SystemUpdate,
+                    contentDescription = stringResource(R.string.updater_title),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }

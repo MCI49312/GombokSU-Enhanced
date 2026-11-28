@@ -2,7 +2,7 @@
 
 # GombokSU Enhanced
 
-**A customized fork of [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next) with an advanced theme studio, 57-font picker, 4-icon selector, built-in auto-updater, and automated upstream release syncing.**
+**A customized fork of [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next) featuring a full Theme & Animation Studio, 57-font picker, 4-icon selector, on-device Custom Spoof, built-in Root Terminal & Diagnostics, App Updater, and automated upstream release syncing.**
 
 [![Latest Release](https://img.shields.io/github/v/release/MCI49312/GombokSU-Enhanced?style=for-the-badge&logo=github)](https://github.com/MCI49312/GombokSU-Enhanced/releases/latest)
 [![License](https://img.shields.io/github/license/MCI49312/GombokSU-Enhanced?style=for-the-badge)](LICENSE)
@@ -14,16 +14,22 @@
 
 > **Note:** GombokSU Enhanced is a personal/community customization fork built with AI assistance. **MCI49312 does NOT accept donations.** Please direct any financial support strictly to the upstream [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next) and [KernelSU](https://github.com/tiann/KernelSU) authors who built the underlying kernel root solution.
 
-
 > **Disclaimer:** The developer is not responsible if you do something wrong and brick your device. Use GombokSU Enhanced at your own risk.
+
+---
 
 ## ✨ What's New in GombokSU Enhanced
 
 ### 🎨 Theme & Customization Studio
-- **Custom Accent Color Engine**: 12 curated presets (*Gombok Blue, Catppuccin, Emerald, Crimson, Amethyst, Sunset, Sakura, Cyber Gold, Ocean Teal, Nord Frost, Dracula, Mint*) plus a full **RGB / Hex Color Picker**.
-- **Theme Controls**: System / Light / Dark mode switcher, Material You (Monet) dynamic colors toggle, and **Pure Black AMOLED** dark mode.
+- **Custom Accent Color Engine**: 12 curated presets (*Gombok Blue, Catppuccin, Emerald, Crimson, Amethyst, Sunset, Sakura, Cyber Gold, Ocean Teal, Nord Frost, Dracula, Mint*), dynamic **Material You (Monet)** with **Device Accent** or any custom accent override, plus a full **RGB / Hex Color Picker**.
+- **Theme Controls**: System / Light / Dark mode switcher and **Pure Black AMOLED** dark mode.
 - **57-Font Dropdown Picker**: Choose from 57 bundled typefaces — including **Comic Sans**, monospace, display, handwriting, serif, and sans-serif families — applied live across the app.
-- **Shapes & Layout**: Custom Card Corner Radius slider (`4dp` – `28dp`).
+- **Shapes & Profiles**: Custom Card Corner Radius slider (`4dp` – `28dp`) plus **JSON Profile Export & Import** (copy/paste via clipboard or save/load `.json` files covering colors, fonts, nav bar, layout, and animation physics).
+
+### 🎞️ Animations Studio
+- **Spring Physics Engine**: Interactive **Live Physics Playground**, **Bounce Multiplier** (`0.0x` – `2.5x`), **Animation Speed** (`0.4x` – `2.5x`), and 6 one-tap presets (*Balanced, Snappy, Bouncy, Jelly, Cinematic, Minimal*).
+- **Page Transitions & Splash Intros**: 5 navigation transition styles (*Slide, Bouncy Zoom, Depth Push, Vertical Rise, Elastic Pop*) and 4 startup splash animations (*Classic Spin, Elastic Pop, Pulse Wave, 3D Flip*) with live fullscreen preview.
+- **Motion Effects**: Toggleable card press squish & bounce, staggered card entrance cascades, Home status pulse glow, and bouncy navigation bar pills & icons.
 
 ### 🧩 4-Icon Launcher & Logo Selector
 Switch both the Android launcher icon and in-app logo on the fly, each supporting **Normal** and **Material You (Monochrome)** themed icons:
@@ -32,21 +38,30 @@ Switch both the Android launcher icon and in-app logo on the fly, each supportin
 3. **KernelSU** (Classic)
 4. **Skull & Crossbones (`☠️`)** (Google Emoji style, single-color monochrome in Material You)
 
-### 🧭 Navigation & Home Dashboard
+### 🖥️ Built-In Root Terminal & Diagnostics
+- **Quick Access**: Accessible from the side-by-side **Terminal** & **Updater** icon buttons on the Home screen as well as **Settings**.
+- **Root Environment**: Toggle **Global Mount Namespace (`--mount-master`)** and run custom commands via the KernelSU root shell with command history, execution timing, exit codes, and selectable live console output.
+- **One-Tap Diagnostics**: Instant chips for *Identity & Kernel*, *KSU Modules* (`libksud.so`), *Kernel Log (`dmesg`)*, *Logcat (`*:W`)*, *Mounts*, *System Props*, *`ksud` & `/data/adb`*, and *Processes*, with copy-to-clipboard and `.txt` export.
+
+### 🥷 On-Device Custom Spoof (Spoofed Build)
+- **Custom Package ID & App Name**: Available inside the **Spoofed** build under **Settings → Custom Spoof** and **Customization → Custom Spoof** (with package ID validation, randomizer, and optional old-app cleanup).
+- **On-Device Repackaging & `0x3e6` Signing**: Patches binary `AndroidManifest.xml` and shortcuts cleanly on-device and re-signs with APK Signature Scheme v2 using GombokSU Enhanced's permanent `0x3e6` certificate so `kernelsu.ko` continues to recognize the spoofed app as **Working**.
+- **Workflow Support**: GitHub Actions `workflow_dispatch` also accepts optional `custom_spoof_package` and `custom_spoof_name` inputs.
+
+### 🧭 Navigation, Home Dashboard & Languages
 - **Live Navigation Bar Controls**: Switch between **Floating Pill**, **Classic Docked**, and **Compact Pill** styles, toggle bottom bar visibility live without restarting, configure icon labels, auto-hide on scroll, horizontal swipe tab navigation, and haptic feedback.
-- **About Device Card**: Expandable card on Home showing **Device Model** (marketing name + model code), **Build Fingerprint**, Kernel, Android version, ABI, SELinux, and Seccomp status.
-- **Home Customization**: Custom top bar title & subtitle, **Show About Device on Home** toggle (enabled by default), **Auto-open About Device on Startup** toggle, and dedicated **Contributors** and **App Updater** pages.
+- **Home Customization**: Custom top bar title & subtitle, expandable **About Device** card (*Device Model*, *Build Fingerprint*, Kernel, Android, ABI, SELinux, Seccomp), **Show About Device on Home** (enabled by default), **Auto-open About Device on Startup**, and dedicated **Contributors** and **App Updater** screens.
+- **Shortcuts & Root Guard**: Launcher shortcuts (*Superuser*, *Modules*) safely redirect to Home when the device is not rooted.
+- **Language Support**: Pre-configured in English out of the box, with a full **Hungarian (`hu-HU`)** translation and 20+ supported locales selectable inside the app.
 
 ### 🔄 Built-In App Updater
-- **Dedicated App Updater Screen** (accessible from **Home** and **Settings**).
-- **Strict Build Variant Detection**: Automatically detects whether you are running the **Normal** (`mci.github.gomboksu`) or **Spoofed** build and only downloads/installs matching APKs — never confusing Normal with Spoofed or vice versa.
-- **Strict Version Comparison**: Compares both semantic version tags/filenames and manager version codes so an already-installed version (e.g., `v3.4.2`) will not trigger an update for itself.
-- **Automatic App Update**: Optionally downloads and installs new releases automatically (via root `pm install` with automatic relaunch, or standard Android Package Installer fallback).
-- **Two Quick Actions**: **Reinstall App** and **Update to New** pinned at the bottom of the Updater page.
+- **Dedicated App Updater Screen** (accessible from the Home icon row and **Settings**).
+- **Strict Build Variant Detection**: Automatically distinguishes **Normal** (`mci.github.gomboksu`) vs **Spoofed** builds and never mixes them.
+- **Strict Version Comparison & Formatted Changelog**: Compares both semantic version tags/filenames and manager version codes, renders clean formatted GitHub release notes, and provides **Reinstall App** and **Update to New** buttons that hand off cleanly to Android's standard Package Installer.
 
 ### ⚡ Boot Image Patching & Automated Upstream Sync
-- **Automatic LKM Manager Signature Patching**: Patching a `boot.img` or `init_boot.img` inside GombokSU Enhanced automatically extracts the target KMI `kernelsu.ko`, patches the manager certificate hash to match GombokSU Enhanced's permanent signing key (`mci.github.gomboksu`), and saves the output as `gomboksu_enhanced_patched_YYYYMMDD_HHMMSS.img` in `Downloads`.
-- **Automated Releases**: A GitHub Actions workflow checks upstream `KernelSU-Next` every 5 minutes, syncs the latest `libksud.so`, LKM `.ko` modules, and UAPI version, builds both Normal and Spoofed APKs, verifies the APK v2 signature, and publishes a matching GitHub Release within ~5–10 minutes.
+- **Automatic LKM Manager Signature Patching**: Patching a `boot.img` or `init_boot.img` automatically extracts the target KMI `kernelsu.ko`, patches the manager certificate hash to match GombokSU Enhanced's permanent `0x3e6` signing key, and saves `gomboksu_enhanced_patched_YYYYMMDD_HHMMSS.img` to `Downloads`.
+- **Automated Upstream Sync**: A GitHub Actions workflow checks upstream `KernelSU-Next` every 5 minutes, syncs the latest `libksud.so`, LKM `.ko` modules (with patched manager hash), and UAPI version, builds and verifies both Normal and Spoofed APKs, and publishes a matching GitHub Release automatically.
 
 ---
 
@@ -54,7 +69,7 @@ Switch both the Android launcher icon and in-app logo on the fly, each supportin
 
 1. Download the latest APK from [**Releases**](https://github.com/MCI49312/GombokSU-Enhanced/releases/latest):
    - **`GombokSU_Enhanced_vX.Y.Z_<code_>-release.apk`** — Standard build (`mci.github.gomboksu`)
-   - **`GombokSU_Enhanced_vX.Y.Z-spoofed_<code_>-release.apk`** — Randomized package ID build
+   - **`GombokSU_Enhanced_vX.Y.Z-spoofed_<code_>-release.apk`** — Randomized package ID build (supports on-device **Custom Spoof**)
 2. Install the APK on your device.
 3. Open **GombokSU Enhanced** → **Install** → **Select a file** → select your stock `init_boot.img` (Android 13+ GKI devices such as Google Pixel) or `boot.img` → tap **Next**.
 4. Flash the generated `gomboksu_enhanced_patched_YYYYMMDD_HHMMSS.img` from your `Download` folder via `fastboot`:
@@ -64,7 +79,7 @@ Switch both the Android launcher icon and in-app logo on the fly, each supportin
    ```
 5. After rebooting, open **GombokSU Enhanced** — it should display **Working [LKM (GKI2)]**.
 
-> **Updating GombokSU Enhanced:** Use the built-in **App Updater** screen inside the app, or install the newer APK directly over your existing installation (no need to re-flash your boot image unless upgrading to a newer kernel UAPI version).
+> **Updating GombokSU Enhanced:** Use the built-in **App Updater** inside the app, or install the newer APK directly over your existing installation (no need to re-flash your boot image unless upgrading to a newer kernel UAPI version).
 
 ---
 
